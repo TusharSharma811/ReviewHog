@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+@theme {
+  /* Container configuration */
+  --container-center: true;
+  --container-padding: 2rem;
+  --container-screen-2xl: 1400px;
+
+  /* Border radius variables */
+  --radius: 0.5rem;
+  --border-radius-lg: var(--radius);
+  --border-radius-md: calc(var(--radius) - 2px);
+  --border-radius-sm: calc(var(--radius) - 4px);
+
+  /* Color palette */
+  --color-border: 220 13% 91%;
+  --color-input: 220 13% 91%;
+  --color-ring: 24 95% 53%;
+  --color-background: 0 0% 100%;
+  --color-foreground: 0 0% 9%;
+
+  /* Primary colors (Orange theme) */
+  --color-primary: 24 95% 53%; /* #ea580c - Orange-600 */
+  --color-primary-foreground: 0 0% 100%; /* #ffffff */
+  --color-primary-50: 24 100% 97%; /* #fff7ed */
+  --color-primary-100: 24 100% 92%; /* #ffedd5 */
+  --color-primary-200: 24 96% 84%; /* #fed7aa */
+  --color-primary-300: 24 93% 72%; /* #fdba74 */
+  --color-primary-400: 24 93% 61%; /* #fb923c */
+  --color-primary-500: 24 95% 53%; /* #f97316 */
+  --color-primary-600: 24 95% 48%; /* #ea580c */
+  --color-primary-700: 24 84% 41%; /* #c2410c */
+  --color-primary-800: 24 70% 34%; /* #9a3412 */
+  --color-primary-900: 24 68% 28%; /* #7c2d12 */
+
+  /* Secondary colors */
+  --color-secondary: 0 0% 96%; /* #f5f5f5 - Gray-100 */
+  --color-secondary-foreground: 0 0% 9%; /* #171717 - Gray-900 */
+
+  /* Destructive colors */
+  --color-destructive: 0 84% 60%;
+  --color-destructive-foreground: 0 0% 98%;
+
+  /* Muted colors */
+  --color-muted: 0 0% 96%; /* #f5f5f5 - Gray-100 */
+  --color-muted-foreground: 0 0% 45%; /* #737373 - Gray-500 */
+
+  /* Accent colors */
+  --color-accent: 0 0% 96%; /* #f5f5f5 - Gray-100 */
+  --color-accent-foreground: 0 0% 9%; /* #171717 - Gray-900 */
+
+  /* Popover colors */
+  --color-popover: 0 0% 100%;
+  --color-popover-foreground: 0 0% 9%;
+
+  /* Card colors */
+  --color-card: 0 0% 100%;
+  --color-card-foreground: 0 0% 9%;
+
+  /* Gray scale */
+  --color-gray-50: 0 0% 98%; /* #fafafa */
+  --color-gray-100: 0 0% 96%; /* #f5f5f5 */
+  --color-gray-200: 0 0% 90%; /* #e5e5e5 */
+  --color-gray-300: 0 0% 83%; /* #d4d4d4 */
+  --color-gray-400: 0 0% 64%; /* #a3a3a3 */
+  --color-gray-500: 0 0% 45%; /* #737373 */
+  --color-gray-600: 0 0% 32%; /* #525252 */
+  --color-gray-700: 0 0% 25%; /* #404040 */
+  --color-gray-800: 0 0% 15%; /* #262626 */
+  --color-gray-900: 0 0% 9%; /* #171717 */
+
+  /* Animations */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+}
+
+/* Keyframe animations */
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: 0 0% 9%;
+    --color-foreground: 0 0% 98%;
+    --color-card: 0 0% 9%;
+    --color-card-foreground: 0 0% 98%;
+    --color-popover: 0 0% 9%;
+    --color-popover-foreground: 0 0% 98%;
+    --color-muted: 0 0% 15%;
+    --color-muted-foreground: 0 0% 64%;
+    --color-accent: 0 0% 15%;
+    --color-accent-foreground: 0 0% 98%;
+    --color-border: 0 0% 15%;
+    --color-input: 0 0% 15%;
+  }
+}
+
+.dark {
+  --color-background: 0 0% 9%;
+  --color-foreground: 0 0% 98%;
+  --color-card: 0 0% 9%;
+  --color-card-foreground: 0 0% 98%;
+  --color-popover: 0 0% 9%;
+  --color-popover-foreground: 0 0% 98%;
+  --color-muted: 0 0% 15%;
+  --color-muted-foreground: 0 0% 64%;
+  --color-accent: 0 0% 15%;
+  --color-accent-foreground: 0 0% 98%;
+  --color-border: 0 0% 15%;
+  --color-input: 0 0% 15%;
+}

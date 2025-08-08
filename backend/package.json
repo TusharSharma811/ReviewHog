@@ -1,0 +1,34 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon --watch . --ext ts --exec node --loader ts-node/esm src/server.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@langchain/core": "^0.3.66",
+    "@langchain/google-genai": "^0.2.16",
+    "@langchain/openai": "^0.6.4",
+    "@types/axios": "^0.9.36",
+    "@types/jsonwebtoken": "^9.0.10",
+    "axios": "^1.11.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "langchain": "^0.3.30",
+    "mongoose": "^8.17.0",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/mongoose": "^5.11.96"
+  }
+}
