@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import axios from "axios";
 import chain from "../utils/aiUtil.ts";
 import dotenv from "dotenv";
+import prisma from "../db/prismaClient.ts";
 
 dotenv.config();
 
@@ -16,14 +17,7 @@ export const githubWebhook = async (req: Request, res: Response) => {
       /\\n/g,
       "\n"
     );
-    const installationId = payload.installation.id;
-    if (event === "installation" && payload.action === "created") {
-      console.log("Webhook received", payload);
-      return res.sendStatus(200);
-    } else if (event === "pull_request" && payload.action === "opened") {
-      console.log("Pull request opened", payload);
-      const URL = payload.pull_request.comments_url;
-      const now = Math.floor(Date.now() / 1000);
+    const now = Math.floor(Date.now() / 1000);
       const JWTpayload = {
         iat: now - 60,
         exp: now + 600,
@@ -32,6 +26,23 @@ export const githubWebhook = async (req: Request, res: Response) => {
       const jwttoken = jwt.sign(JWTpayload, GITHUB_PRIVATE_KEY!, {
         algorithm: "RS256",
       });
+    const installationId = payload.installation.id;
+    if (event === "installation" && payload.action === "created") {
+
+      const repo_URL = payload.installation.repositories_url;
+      axios.get(repo_URL, {
+        headers: {
+          Authorization: `Bearer ${jwttoken}`,
+          Accept: "application/vnd.github+json",
+        },
+      }).then((response) => {
+        console.log("Repository details", response.data);
+      });
+      console.log("Installation created", payload);
+    } else if (event === "pull_request" && payload.action === "opened") {
+      console.log("Pull request opened", payload);
+      const URL = payload.pull_request.comments_url;
+      
       const tokenRes = await axios.post(
         `https://api.github.com/app/installations/${installationId}/access_tokens`,
         {},

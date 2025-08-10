@@ -1,0 +1,58 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  repos     Repos[]
+  insights  Insights?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Repos{
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  url         String   @unique
+  owner      User     @relation(fields: [ownerId], references: [id])
+  ownerId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Insights{
+  id        String   @id @default(cuid())
+  owner     User     @relation(fields: [ownerId], references: [id])
+  ownerId   String   @unique
+  totalPR   Int       @default(0)
+  totalReviews Int    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// model ReviewData {
+//   id          String   @id @default(cuid())
+//   repo       Repos    @relation(fields: [repoId], references: [id])
+//   repoId     String
+//   owner   User     @relation(fields: [reviewerId], references: [id])
+//   reviewerId String
+//   createdAt  DateTime @default(now())
+//   updatedAt  DateTime @updatedAt
+// }
+  

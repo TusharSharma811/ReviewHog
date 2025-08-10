@@ -13,18 +13,7 @@ export default function SignInPage() {
   async function handleGithubSignIn() {
     setSubmitting(true)
     // Demo: pretend to sign in
-    fetch("http://localhost:3000/api/auth/github/signin", {
-      method: "POST",
-      credentials: "include",
-    })
-      .then((res) => {
-        if (res.ok) {
-           navigate("/dashboard") 
-        } 
-      })
-      .finally(() => {
-        setSubmitting(false)
-      })
+    window.location.href = "http://localhost:3000/api/auth/github";
   }
 
   return (
