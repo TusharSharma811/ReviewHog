@@ -3,7 +3,6 @@ import prisma from "../db/prismaClient.ts";
 export const getUserInsights = async (req: Request, res: Response) => {
         const {id} = req.query;
         try {
-                // Fetch user insights from the database or any other source
                 const insights = await prisma.user.findUnique({
                         where: { ownerId: String(id) },
                         include: { insights: true }
