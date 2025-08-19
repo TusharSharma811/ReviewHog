@@ -4,7 +4,7 @@ import { githubWebhook } from "../controllers/webhook.controller.ts";
 const router = Router();
 
 
-router.post("/github/callback" , (req, res) => {
+router.get("/github/callback" , (req, res) => {
   console.log("Callback received" , req);
   res.sendStatus(200);
 }) 

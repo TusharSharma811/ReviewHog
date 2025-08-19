@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom"
 import LandingPage from "./pages/Landing";
+import Dashboard from "./pages/Dashboard";
 
 
 
@@ -9,6 +10,10 @@ function App() {
     {
       path: "/",
       element: <LandingPage />,
+    } ,
+    {
+      path: "/dashboard",
+      element: <Dashboard />,
     }
   ]);
 
