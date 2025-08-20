@@ -1,10 +1,8 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Github, GitPullRequest, Shield, Zap } from "lucide-react";
 
 
 const LandingPage = () => {
-  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGitHubLogin = async () => {

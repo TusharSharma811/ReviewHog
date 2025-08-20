@@ -1,234 +1,148 @@
-import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-
-import { Search, GitPullRequest, Clock, CheckCircle, AlertCircle, Github } from "lucide-react";
-
-// Mock data for demonstration
-const mockPRs = [
-  {
-    id: 1,
-    title: "Add user authentication system",
-    repository: "acme-corp/web-app",
-    number: 123,
-    author: "john-doe",
-    status: "reviewed",
-    severity: "medium",
-    createdAt: "2024-01-15T10:30:00Z",
-    aiScore: 85,
-    issuesFound: 3,
-    suggestionsCount: 5
-  },
-  {
-    id: 2,
-    title: "Fix memory leak in data processing",
-    repository: "acme-corp/api-server",
-    number: 456,
-    author: "jane-smith",
-    status: "pending",
-    severity: "high",
-    createdAt: "2024-01-14T15:45:00Z",
-    aiScore: 92,
-    issuesFound: 7,
-    suggestionsCount: 12
-  },
-  {
-    id: 3,
-    title: "Update documentation for v2 API",
-    repository: "acme-corp/docs",
-    number: 789,
-    author: "dev-team",
-    status: "approved",
-    severity: "low",
-    createdAt: "2024-01-13T09:15:00Z",
-    aiScore: 95,
-    issuesFound: 1,
-    suggestionsCount: 2
-  }
-];
-
-const mockRepos = [
-  { name: "acme-corp/web-app", prs: 12, lastActivity: "2 hours ago" },
-  { name: "acme-corp/api-server", prs: 8, lastActivity: "5 hours ago" },
-  { name: "acme-corp/docs", prs: 3, lastActivity: "1 day ago" }
-];
+import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Search, GitPullRequest, Github } from "lucide-react";
+import { useDashboardData } from "../hooks/useApi";
+import { LoadingState, EmptyState } from "../components/LoadingState";
+import { PullRequestCard } from "../components/PullRequestCard";
+import { RepositoryList } from "../components/RepositoryList";
+import type { PullRequest } from "../types";
 
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("reviews");
-  const [repoData , setrepoData] = useState([{
-    name: "",
-  }]);
-  const uid = useSearchParams()[0].get("uid");
-  useEffect(() => {
-    // Fetch user data or perform any necessary setup
-    const fetchData = async () => {
-      try {
-        const response = await fetch("http://localhost:3000/api/users/data/repositories?id="+uid ,
-          {
-            credentials: "include",
-          }
-        );
-        const data = await response.json();
-        console.log("User data:", data);
-        setrepoData(data.repos || []);
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-      }
-    };
+  const [searchParams] = useSearchParams();
+  const uid = searchParams.get("uid");
 
-    fetchData();
-  }, []);
+  const { dashboardData, loading, refetch } = useDashboardData(uid || undefined);
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case "high": return "severity-high";
-      case "medium": return "severity-medium";
-      case "low": return "severity-low";
-      default: return "muted";
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "approved": return <CheckCircle className="h-4 w-4 text-success" />;
-      case "reviewed": return <AlertCircle className="h-4 w-4 text-warning" />;
-      case "pending": return <Clock className="h-4 w-4 text-muted-foreground" />;
-      default: return <Clock className="h-4 w-4 text-muted-foreground" />;
-    }
-  };
-
-  const filteredPRs = mockPRs.filter(pr => 
+  const filteredPRs = dashboardData?.pullRequests.filter((pr: PullRequest) =>
     pr.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     pr.repository.toLowerCase().includes(searchQuery.toLowerCase()) ||
     pr.author.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ) || [];
 
   return (
-    
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">Review your AI-powered pull request insights</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <GitPullRequest className="h-8 w-8 text-primary" />
+                </div>
+                <h1 className="text-2xl font-bold">CodeRevU Dashboard</h1>
+              </div>
+              
+              {/* Stats */}
+              {dashboardData && (
+                <div className="hidden md:flex space-x-6 text-sm">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-primary">{dashboardData.stats.totalPRs}</div>
+                    <div className="text-muted-foreground">Pull Requests</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{dashboardData.stats.averageScore}%</div>
+                    <div className="text-muted-foreground">Avg Score</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-yellow-600">{dashboardData.stats.totalIssues}</div>
+                    <div className="text-muted-foreground">Issues Found</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">{dashboardData.stats.totalSuggestions}</div>
+                    <div className="text-muted-foreground">Suggestions</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <button 
+                onClick={refetch}
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                aria-label="Refresh dashboard data"
+              >
+                <Github className="mr-2 h-4 w-4" />
+                Refresh Data
+              </button>
+            </div>
           </div>
-          <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-            <Github className="mr-2 h-4 w-4" />
-            Manage Repositories
-          </button>
-        </div>
 
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            placeholder="Search pull requests..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-          />
-        </div>
-
-        <div className="space-y-4">
-          <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+          {/* Tabs */}
+          <div className="flex space-x-8 border-b border-gray-200">
             <button
               onClick={() => setActiveTab("reviews")}
-              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${activeTab === "reviews" ? "bg-background text-foreground shadow-sm" : ""}`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === "reviews"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-gray-700 hover:border-gray-300"
+              }`}
+              aria-current={activeTab === "reviews" ? "page" : undefined}
             >
-              Recent Reviews
+              Reviews
             </button>
             <button
               onClick={() => setActiveTab("repositories")}
-              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${activeTab === "repositories" ? "bg-background text-foreground shadow-sm" : ""}`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === "repositories"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-gray-700 hover:border-gray-300"
+              }`}
+              aria-current={activeTab === "repositories" ? "page" : undefined}
             >
               Repositories
             </button>
           </div>
-
-          {activeTab === "reviews" && (
-            <div className="space-y-4">
-              {filteredPRs.map((pr) => (
-                <div key={pr.id} className="rounded-lg border bg-card text-card-foreground shadow-sm hover:bg-accent/50 transition-colors">
-                  <div className="flex flex-col space-y-1.5 p-6 pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <div className="flex items-center space-x-2">
-                          <GitPullRequest className="h-4 w-4 text-primary" />
-                          <span className="text-sm text-muted-foreground">{pr.repository}</span>
-                          <span className="text-sm text-muted-foreground">#{pr.number}</span>
-                        </div>
-                        <h3 className="text-lg text-2xl font-semibold leading-none tracking-tight">
-                          <Link 
-                            to={`/dashboard/${pr.repository}/${pr.number}`}
-                            className="hover:text-primary transition-colors"
-                          >
-                            {pr.title}
-                          </Link>
-                        </h3>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon(pr.status)}
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-foreground text-${getSeverityColor(pr.severity)} border-${getSeverityColor(pr.severity)}`}>
-                          {pr.severity}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-6 pt-0">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                        <div className="flex items-center space-x-1">
-                          <div className="relative flex h-5 w-5 shrink-0 overflow-hidden rounded-full">
-                            <img 
-                              src={`https://github.com/${pr.author}.png`} 
-                              alt="Avatar"
-                              className="aspect-square h-full w-full"
-                            />
-                          </div>
-                          <span>{pr.author}</span>
-                        </div>
-                        <span>•</span>
-                        <span>{new Date(pr.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex items-center space-x-4 text-sm">
-                        <span className="text-success">Score: {pr.aiScore}%</span>
-                        <span className="text-warning">{pr.issuesFound} issues</span>
-                        <span className="text-primary">{pr.suggestionsCount} suggestions</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {activeTab === "repositories" && (
-            <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {repoData.map((repo) => (
-                  <div key={repo.name} className="rounded-lg border bg-card text-card-foreground shadow-sm">
-                    <div className="flex flex-col space-y-1.5 p-6">
-                      <div className="flex items-center space-x-2">
-                        <Github className="h-5 w-5 text-primary" />
-                        <h3 className="text-lg text-2xl font-semibold leading-none tracking-tight">{repo.name}</h3>
-                      </div>
-                      {/* <p className="text-sm text-muted-foreground">
-                        {repo.prs} pull requests • Last activity {repo.lastActivity}
-                      </p> */}
-                    </div>
-                    <div className="p-6 pt-0">
-                      <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 w-full">
-                        View Reviews
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
-   
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <LoadingState 
+          isLoading={loading.isLoading} 
+          error={loading.error}
+        >
+          {activeTab === "reviews" && (
+            <div className="space-y-6">
+              {/* Search */}
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  placeholder="Search pull requests..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-10 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Search pull requests"
+                />
+              </div>
+
+              {/* Pull Requests */}
+              {filteredPRs.length === 0 ? (
+                <EmptyState
+                  title="No pull requests found"
+                  description={searchQuery ? "Try adjusting your search terms." : "No pull requests to review yet."}
+                  icon={<GitPullRequest className="h-12 w-12 text-gray-400" />}
+                />
+              ) : (
+                <div className="space-y-4" role="list" aria-label="Pull requests">
+                  {filteredPRs.map((pr) => (
+                    <div key={pr.id} role="listitem">
+                      <PullRequestCard pullRequest={pr} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "repositories" && dashboardData && (
+            <RepositoryList repositories={dashboardData.repositories} />
+          )}
+        </LoadingState>
+      </div>
+    </div>
   );
 };
 
