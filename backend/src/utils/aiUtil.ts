@@ -1,7 +1,7 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatPromptTemplate, PromptTemplate } from "@langchain/core/prompts";
 import dotenv from "dotenv";
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+
 
 dotenv.config();
 

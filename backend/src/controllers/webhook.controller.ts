@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
-import axios from "axios";
+
 import dotenv from "dotenv";
-import { generateAppJwt } from "../utils/githubAuth.ts";
+
 dotenv.config();
 import { installationWebhook } from "../webhook/installation.webhook.ts";
 import { pullRequestWebhook } from "../webhook/pullRequest.webhook.ts";
+import { repoHandlerWebhook } from "../webhook/repoHandler.webhook.ts";
 
 export const githubWebhook = async (req: Request, res: Response) => {
   try {
@@ -13,7 +14,12 @@ export const githubWebhook = async (req: Request, res: Response) => {
     
     if (event === "installation") {
       installationWebhook(req, res, payload.action, payload);
-    } else if (event === "pull_request" ) {
+      
+    }
+    else if (event === "installation_repositories") {
+      repoHandlerWebhook(req, res, payload.action, payload);
+    }
+     else if (event === "pull_request" ) {
       pullRequestWebhook(req, res, payload.action, payload);
     }
   } catch (error) {
