@@ -26,6 +26,21 @@ export const pullRequestWebhook = async (req: Request, res: Response , action: s
           Accept: "application/vnd.github.v3+json",
         },
       });
+       const createResp: any = await axios.post(
+        `https://api.github.com/repos/${payload.repository.owner.login}/${payload.repository.name}/check-runs`,
+        {
+          name: "AI Code Review",
+          head_sha: payload.pull_request.head.sha,
+          status: "in_progress",
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+          },
+        }
+      );
+      const checkRunId = createResp.data.id;
 
       for (const file of prFilesRes.data as any[]) {
         if (file.status === "removed") {
@@ -57,6 +72,21 @@ export const pullRequestWebhook = async (req: Request, res: Response , action: s
           }
         );
       }
+      await axios.patch(
+        `https://api.github.com/repos/${payload.repository.owner.login}/${payload.repository.name}/check-runs/${checkRunId}`,
+        {
+          name: "AI Code Review",
+          head_sha: payload.pull_request.head.sha,
+          status: "completed",
+          conclusion: "success"
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+          },
+        }
+      );
 
       break;
     case 'deleted':

@@ -23,6 +23,12 @@ Your response should be a single comment that includes:
 5. Use markdown formatting for code snippets, if applicable.
 6. Be concise but thorough in your review.
 7. Use markdown formatting for comments and output a single string response.
+Output in the format : 
+
+{{  
+  "comment": "Looks good to me!" ,
+  "conclusion" : ["success" , "failure"]
+}}
 
 Here is the code diff:
 {diff}
