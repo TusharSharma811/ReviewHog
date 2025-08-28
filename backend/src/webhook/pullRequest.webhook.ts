@@ -11,6 +11,8 @@ function extractJsonFromCodeBlock(input: string): any {
     .replace(/\s*```$/, "");    // remove ending ```
 
   try {
+    console.log(cleaned);
+
     return JSON.parse(cleaned);
   } catch (err) {
     throw new Error("Invalid JSON inside code block: " + err);
@@ -87,7 +89,7 @@ export const pullRequestWebhook = async (req: Request, res: Response , action: s
         const full_file = ContentRes.data;
         const response = await chain.invoke({ diff: diffText , full_file });
         console.log(response);
-        const rawContent = response.content; // your original JSON's "content" field
+        const rawContent = response.content; 
         const extracted = extractJsonFromCodeBlock(rawContent as string);
         await axios.post(
           `${URL}`,
