@@ -72,7 +72,7 @@ export const pullRequestWebhook = async (req: Request, res: Response , action: s
         }
       );
       const checkRunId = createResp.data.id;
-
+      const file_data : string[] = [] ;
       for (const file of prFilesRes.data as any[]) {
         if (file.status === "removed") {
           console.log(
@@ -87,10 +87,15 @@ export const pullRequestWebhook = async (req: Request, res: Response , action: s
           },
         });        
         const full_file = ContentRes.data;
-        const response = await chain.invoke({ diff: diffText , full_file });
+        file_data.push( `File Path: ${file.filename}\nContent:\n${full_file}\n\n` ) ;
+        
+        
+      }
+      const response = await chain.invoke({ diff: diffText , full_file : file_data });
         console.log(response);
         const rawContent = response.content; 
         const extracted = extractJsonFromCodeBlock(rawContent as string);
+
         await axios.post(
           `${URL}`,
           {
@@ -104,7 +109,6 @@ export const pullRequestWebhook = async (req: Request, res: Response , action: s
             },
           }
         );
-      }
       await axios.patch(
         `https://api.github.com/repos/${payload.repository.owner.login}/${payload.repository.name}/check-runs/${checkRunId}`,
         {
