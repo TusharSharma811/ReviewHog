@@ -1,10 +1,8 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Github, GitPullRequest, Shield, Zap } from "lucide-react";
 
 
 const LandingPage = () => {
-  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGitHubLogin = async () => {
@@ -13,13 +11,14 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-black">
+
+      <span className="absolute right-5 top-[-10px] "></span>
       {/* Background Hero Image */}
       <div 
-        className="absolute inset-0 opacity-10 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${`https://id-preview--9a35b650-0dc3-4134-be8e-cee942f0c9d3.lovable.app/assets/hero-image-BExshNac.jpg`})` }}
+        className="absolute inset-0 bg-[radial-gradient(125%_125%_at_50%_20%,#000_40%,hsl(212,100%,48%)_100%)] transition-all" 
       />
-      <div className="absolute inset-0 bg-gradient-to-br from-background via-transparent to-background" />
+      
       
       <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center relative z-10">
         {/* Hero Section */}

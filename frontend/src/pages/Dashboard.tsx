@@ -46,11 +46,7 @@ const mockPRs = [
   }
 ];
 
-const mockRepos = [
-  { name: "acme-corp/web-app", prs: 12, lastActivity: "2 hours ago" },
-  { name: "acme-corp/api-server", prs: 8, lastActivity: "5 hours ago" },
-  { name: "acme-corp/docs", prs: 3, lastActivity: "1 day ago" }
-];
+
 
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
