@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Github, GitPullRequest, Shield, Zap } from "lucide-react";
-
+import { Github,  Shield, Zap } from "lucide-react";
+import {motion} from "motion/react"
 
 const LandingPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -14,21 +14,17 @@ const LandingPage = () => {
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-black">
 
       <span className="absolute right-5 top-[-10px] "></span>
-      {/* Background Hero Image */}
+     
       <div 
         className="absolute inset-0 bg-[radial-gradient(125%_125%_at_50%_20%,#000_40%,hsl(212,100%,48%)_100%)] transition-all" 
       />
-      
-      
+
+       <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className=" text-9xl absolute top-10 font-heading">ReviewHog</motion.h1>
       <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center relative z-10">
         {/* Hero Section */}
+       
         <div className="space-y-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <GitPullRequest className="h-8 w-8 text-primary" />
-            </div>
-            <h1 className="text-3xl font-bold">CodeRevU</h1>
-          </div>
+          
           
           <div className="space-y-4">
             <h2 className="text-4xl font-bold leading-tight">

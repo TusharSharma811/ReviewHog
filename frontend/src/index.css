@@ -1,3 +1,4 @@
+@import url('https://fonts.cdnfonts.com/css/pixeboy');
 @import "tailwindcss";
 
 
@@ -166,6 +167,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
 
+  --font-heading: 'Pixeboy', sans-serif;
 
 
   
