@@ -1,0 +1,43 @@
+name: Deploy Backend to VM
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  deploy:
+    if: github.event_name == 'push' || (github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install SSH client
+        run: sudo apt-get install -y openssh-client rsync
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Copy files to VM
+        run: |
+          rsync -avz --delete \
+            docker-compose.yml \
+            backend/ \
+            nginx/ \
+            ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/home/ubuntu/app
+
+      - name: Rebuild and restart containers
+        run: |
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
+            cd /home/ubuntu/app
+            docker-compose down
+            docker-compose up -d --build
+          EOF
