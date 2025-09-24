@@ -3,9 +3,9 @@ import { Request, Response } from "express";
 import dotenv from "dotenv";
 
 dotenv.config();
-import { installationWebhook } from "../webhook/installation.webhook.ts";
-import { pullRequestWebhook } from "../webhook/pullRequest.webhook.ts";
-import { repoHandlerWebhook } from "../webhook/repoHandler.webhook.ts";
+import { installationWebhook } from "../webhook/installation.webhook.js";
+import { pullRequestWebhook } from "../webhook/pullRequest.webhook.js";
+import { repoHandlerWebhook } from "../webhook/repoHandler.webhook.js";
 
 export const githubWebhook = async (req: Request, res: Response) => {
   try {

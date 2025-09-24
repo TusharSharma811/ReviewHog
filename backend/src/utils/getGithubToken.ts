@@ -1,5 +1,5 @@
 import axios from "axios";
-import { generateAppJwt } from "./githubAuth.ts";
+import { generateAppJwt } from "./githubAuth.js";
 
 export const getGithubToken = async (installationId: string) => {
   const jwttoken = generateAppJwt();

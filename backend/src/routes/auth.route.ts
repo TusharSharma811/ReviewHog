@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { githubCallback, githubLogin } from "../controllers/auth.controller.ts";
+import { githubCallback, githubLogin } from "../controllers/auth.controller.js";
 const router = Router();
 
 router.get("/github", githubLogin);

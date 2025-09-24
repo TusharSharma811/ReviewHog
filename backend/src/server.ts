@@ -1,9 +1,9 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import githubRoutes from "./routes/github.route.ts";
-import authRoutes from "./routes/auth.route.ts";
-import userRoutes from "./routes/user.route.ts";
+import githubRoutes from "./routes/github.route.js";
+import authRoutes from "./routes/auth.route.js";
+import userRoutes from "./routes/user.route.js";
 
 
 const app = express();

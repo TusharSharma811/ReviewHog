@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import chain from "../utils/aiUtil.ts";
+import chain from "../utils/aiUtil.js";
 import axios, { get } from "axios";
-import { getGithubToken } from "../utils/getGithubToken.ts";
+import { getGithubToken } from "../utils/getGithubToken.js";
 
 function extractJsonFromCodeBlock(input: string): any {
   // Remove ```json ... ``` wrappers

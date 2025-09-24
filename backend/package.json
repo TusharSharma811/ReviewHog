@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon --watch . --ext ts --exec node --loader ts-node/esm src/server.ts"
+    "start": "nodemon --watch . --ext ts --exec node --loader ts-node/esm src/server.ts",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",

@@ -1,6 +1,6 @@
 import { Router } from "express";
-import verifyJWT from "../middleware/verifyJWT.ts";
-import { getUserInsights, getUserRepositories } from "../controllers/user.controller.ts";
+import verifyJWT from "../middleware/verifyJWT.js";
+import { getUserInsights, getUserRepositories } from "../controllers/user.controller.js";
 
 const router = Router();
 

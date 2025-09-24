@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import axios from "axios";
-import prisma from "../db/prismaClient.ts";
-import { generateJWTToken } from "../utils/jwtTokenGenerator.ts";
+import prisma from "../db/prismaClient.js";
+import { generateJWTToken } from "../utils/jwtTokenGenerator.js";
 export const githubLogin = async (req: Request, res: Response) => {
     try{
         const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_url=${process.env.GITHUB_REDIRECT_URI}&scope=user:email%20repo`;

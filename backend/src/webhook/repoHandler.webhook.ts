@@ -1,6 +1,6 @@
 import { Request , Response } from "express";
 
-import prisma from "../db/prismaClient.ts";
+import prisma from "../db/prismaClient.js";
 
 export const repoHandlerWebhook = async (req: Request, res: Response , action: string , payload: any) => {
 

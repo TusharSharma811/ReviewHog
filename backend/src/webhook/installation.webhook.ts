@@ -1,7 +1,7 @@
 import { Request , Response } from "express";
 import axios from "axios";
-import { getGithubToken } from "../utils/getGithubToken.ts";
-import prisma from "../db/prismaClient.ts";
+import { getGithubToken } from "../utils/getGithubToken.js";
+import prisma from "../db/prismaClient.js";
 
 export const installationWebhook = async (req: Request, res: Response , action: string , payload: any) => {
 
