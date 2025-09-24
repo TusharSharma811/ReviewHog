@@ -59,7 +59,7 @@ const Dashboard = () => {
     // Fetch user data or perform any necessary setup
     const fetchData = async () => {
       try {
-        const response = await fetch("http://34.4.26.181:80/api/users/data/repositories?id="+uid ,
+        const response = await fetch("https://vulture-needed-immensely.ngrok-free.app//api/users/data/repositories?id="+uid ,
           {
             credentials: "include",
           }
