@@ -76,7 +76,7 @@ export const githubCallback = async (req: Request, res: Response) => {
 
          }
          const userToken = generateJWTToken(doesUserExist);
-         return res.cookie("token", userToken, { httpOnly: true }).redirect(`http://localhost:5173/dashboard?uid=${doesUserExist?.id}`);
+         return res.cookie("token", userToken, { httpOnly: true }).redirect(`http://review-hog.vercel.app/dashboard?uid=${doesUserExist?.id}`);
 
    }).catch((error) => {
        console.error("Error exchanging code for access token:", error);
