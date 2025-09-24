@@ -72,7 +72,7 @@ export const githubCallback = async (req: Request, res: Response) => {
                      },
                  }
              );
-              return res.redirect("https://github.com/apps/CodeRevu/installations/new");
+              return res.redirect("https://github.com/apps/reviewhog/installations/new");
 
          }
          const userToken = generateJWTToken(doesUserExist);
