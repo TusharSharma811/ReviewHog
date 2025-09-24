@@ -7,7 +7,7 @@ const LandingPage = () => {
 
   const handleGitHubLogin = async () => {
     setIsLoading(true);
-   window.location.href = "http://34.4.26.181:80/api/auth/github";
+   window.location.href = "https://vulture-needed-immensely.ngrok-free.app/api/auth/github";
   };
 
   return (
