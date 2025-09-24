@@ -7,7 +7,7 @@ const LandingPage = () => {
 
   const handleGitHubLogin = async () => {
     setIsLoading(true);
-   window.location.href = "http://localhost:3000/api/auth/github";
+   window.location.href = "http://34.4.26.181:80/api/auth/github";
   };
 
   return (

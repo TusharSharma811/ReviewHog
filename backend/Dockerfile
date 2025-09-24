@@ -22,7 +22,8 @@ WORKDIR /app
 
 COPY package*.json ./
 RUN npm install --only=production
-
+COPY prisma ./prisma
+RUN npx prisma generate
 
 COPY --from=builder /app/dist ./dist
 
