@@ -1,9 +1,48 @@
-import { Bot, GitBranch, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { Bot } from "lucide-react";
 import { MetricsCard } from "@/components/MetricsCard";
 import { RecentActivity } from "@/components/RecentActivity";
 import { RepositoryCard } from "@/components/RepositoryCard";
+import { useEffect, useState } from "react";
 
 const Dashboard = () => {
+
+  const uid = new URLSearchParams(window.location.search).get("uid");
+  console.log("User ID:", uid);
+  const [repositories , setRepositories] = useState([]) ;
+  const [metrics , setMetrics] = useState([]) ;
+  const [recentActivities , setRecentActivities] = useState([]) ;
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch(`https://vulture-needed-immensely.ngrok-free.app//api/users/data/${uid}` , {
+          method : "GET" ,
+          credentials : "include"
+        });
+        const response2 = await fetch(`https://vulture-needed-immensely.ngrok-free.app/api/users/data/insights/${uid}` , {
+          method : "GET" ,
+          credentials : "include"
+        });
+        const response3 = await fetch(`https://vulture-needed-immensely.ngrok-free.app/api/users/data/recent-activities/${uid}` , {
+          method : "GET" ,
+          credentials : "include"
+        });
+        const data = await response.json();
+        const data2 = await response2.json();
+        const data3 = await response3.json();
+        console.log("Fetched Recent Activities:", data3);
+        setRepositories(data.repositories) ;
+        setMetrics(data2) ;
+        setRecentActivities(data3) ;
+        console.log("Fetched Repositories:", data.repositories);
+        console.log("Fetched Metrics:", data2);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+    if (uid) {
+      fetchData();
+    }
+  }, [uid]);
   return (
     <div className="min-h-screen bg-gradient-subtle">
       {/* Header */}
@@ -15,7 +54,7 @@ const Dashboard = () => {
                 <Bot className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-foreground">AI Review Bot</h1>
+                <h1 className="text-xl font-semibold text-foreground">ReviewHog</h1>
                 <p className="text-sm text-muted-foreground">GitHub Integration Dashboard</p>
               </div>
             </div>
@@ -37,38 +76,15 @@ const Dashboard = () => {
           
           {/* Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <MetricsCard
-              title="Reviews Completed"
-              value="1,247"
-              change="+12%"
-              changeType="positive"
-              icon={CheckCircle}
-              description="This month"
-            />
-            <MetricsCard
-              title="Success Rate"
-              value="94.2%"
-              change="+2.1%"
-              changeType="positive"
-              icon={AlertCircle}
-              description="Last 30 days"
-            />
-            <MetricsCard
-              title="Repositories"
-              value="23"
-              change="+3"
-              changeType="positive"
-              icon={GitBranch}
-              description="Connected"
-            />
-            <MetricsCard
-              title="Avg Review Time"
-              value="2.4m"
-              change="-0.3m"
-              changeType="positive"
-              icon={Clock}
-              description="Per pull request"
-            />
+           {
+            metrics.map((metric , index) => (
+              <MetricsCard 
+                key={index}
+                title={metric.title}
+                value={metric.value}
+              />
+            ))
+           }
           </div>
         </div>
 
@@ -76,12 +92,12 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Recent Activity */}
           <div className="lg:col-span-2">
-            <RecentActivity />
+            <RecentActivity recentActivities={recentActivities} />
           </div>
 
           {/* Repository Status */}
           <div className="space-y-6">
-            <RepositoryCard />
+            <RepositoryCard repositories={repositories}/>
           </div>
         </div>
       </main>

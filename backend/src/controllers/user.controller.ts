@@ -28,5 +28,16 @@ export const getUserRepositories = async (req: Request, res: Response) => {
         }
 };
 
-        
-
+export const getUserRecentReviews = async (req: Request, res: Response) => {
+        const {id} = req.query;
+        try {
+                const reviews = await prisma.user.findUnique({
+                        where: { id: String(id) },
+                        include: { reviews: true }
+                });
+                res.json(reviews);
+        } catch (error) {
+                console.error("Error fetching user recent reviews:", error);
+                res.status(500).json({ message: "Internal Server Error" });
+        }
+};
