@@ -1,4 +1,4 @@
-import { Bot } from "lucide-react";
+import { Bot , GitBranchIcon , GitPullRequest} from "lucide-react";
 import { MetricsCard } from "@/components/MetricsCard";
 import { RecentActivity } from "@/components/RecentActivity";
 import { RepositoryCard } from "@/components/RepositoryCard";
@@ -9,32 +9,19 @@ const Dashboard = () => {
   const uid = new URLSearchParams(window.location.search).get("uid");
   console.log("User ID:", uid);
   const [repositories , setRepositories] = useState([]) ;
-  const [metrics , setMetrics] = useState([]) ;
+  const [metrics , setMetrics] = useState({}) ;
   const [recentActivities , setRecentActivities] = useState([]) ;
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`https://vulture-needed-immensely.ngrok-free.app//api/users/data/${uid}` , {
-          method : "GET" ,
-          credentials : "include"
-        });
-        const response2 = await fetch(`https://vulture-needed-immensely.ngrok-free.app/api/users/data/insights/${uid}` , {
-          method : "GET" ,
-          credentials : "include"
-        });
-        const response3 = await fetch(`https://vulture-needed-immensely.ngrok-free.app/api/users/data/recent-activities/${uid}` , {
+        const response = await fetch(`https://vulture-needed-immensely.ngrok-free.app//api/users/data/me/insights?uid=${uid}` , {
           method : "GET" ,
           credentials : "include"
         });
         const data = await response.json();
-        const data2 = await response2.json();
-        const data3 = await response3.json();
-        console.log("Fetched Recent Activities:", data3);
-        setRepositories(data.repositories) ;
-        setMetrics(data2) ;
-        setRecentActivities(data3) ;
-        console.log("Fetched Repositories:", data.repositories);
-        console.log("Fetched Metrics:", data2);
+        setRepositories(data.repos);
+        setMetrics(data.reviews);
+        setRecentActivities(data.insights);
       } catch (error) {
         console.error("Error fetching user data:", error);
       }
@@ -76,15 +63,8 @@ const Dashboard = () => {
           
           {/* Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-           {
-            metrics.map((metric , index) => (
-              <MetricsCard 
-                key={index}
-                title={metric.title}
-                value={metric.value}
-              />
-            ))
-           }
+            <MetricsCard title="Open PRs" value={metrics.totalPRs?.toString() || '0'} icon={GitPullRequest} description="Number of open pull requests across all repositories." />
+           <MetricsCard title="Total Repositories" value={repositories.length.toString() || '0'} icon={GitBranchIcon} description="Total number of repositories owned by the user." />
           </div>
         </div>
 
