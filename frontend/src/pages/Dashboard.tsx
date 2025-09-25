@@ -26,6 +26,8 @@ const Dashboard = () => {
           credentials : "include"
         });
         const data = await response.json();
+        console.log("Fetched Data:", data);
+        
         setRepositories(data.repos);
         setMetrics(data.reviews);
         setRecentActivities(data.insights);

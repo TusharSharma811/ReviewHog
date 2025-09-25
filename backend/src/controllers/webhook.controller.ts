@@ -14,14 +14,14 @@ export const githubWebhook = async (req: Request, res: Response) => {
     console.log(event, payload);
 
     if (event === "installation") {
-      installationWebhook(req, res, payload.action, payload);
+      await installationWebhook(req, res, payload.action, payload);
       
     }
     else if (event === "installation_repositories") {
-      repoHandlerWebhook(req, res, payload.action, payload);
+      await repoHandlerWebhook(req, res, payload.action, payload);
     }
      else if (event === "pull_request" ) {
-      pullRequestWebhook(req, res, payload.action, payload);
+      await pullRequestWebhook(req, res, payload.action, payload);
     }
   } catch (error) {
     console.log("Error in githubWebhook", error);
