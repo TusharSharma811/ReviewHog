@@ -4,12 +4,19 @@ import { RecentActivity } from "@/components/RecentActivity";
 import { RepositoryCard } from "@/components/RepositoryCard";
 import { useEffect, useState } from "react";
 
+interface metrics {
+  totalPRs?: number;
+  totalReviews?: number;
+  avgReviewTime?: string;
+  issuesFound?: number;
+}
+
 const Dashboard = () => {
 
   const uid = new URLSearchParams(window.location.search).get("uid");
   console.log("User ID:", uid);
   const [repositories , setRepositories] = useState([]) ;
-  const [metrics , setMetrics] = useState({}) ;
+  const [metrics , setMetrics] = useState<metrics>({}) ;
   const [recentActivities , setRecentActivities] = useState([]) ;
   useEffect(() => {
     const fetchData = async () => {
