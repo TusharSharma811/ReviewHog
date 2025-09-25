@@ -21,7 +21,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`https://vulture-needed-immensely.ngrok-free.app//api/users/data/me/insights?uid=${uid}` , {
+        const response = await fetch(`https://vulture-needed-immensely.ngrok-free.app/api/users/data/me/insights?uid=${uid}` , {
           method : "GET" ,
           credentials : "include"
         });
