@@ -1,4 +1,6 @@
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+dotenv.config();
 export function generateAppJwt(): string {
   const now = Math.floor(Date.now() / 1000);
 

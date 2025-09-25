@@ -12,42 +12,9 @@ interface Repository {
   reviewCount: number;
 }
 
-const mockRepositories: Repository[] = [
-  {
-    id: "1",
-    name: "frontend/dashboard",
-    owner: "acme-corp",
-    status: "active",
-    lastReview: "2 min ago",
-    reviewCount: 45
-  },
-  {
-    id: "2", 
-    name: "backend/api",
-    owner: "acme-corp",
-    status: "active",
-    lastReview: "15 min ago",
-    reviewCount: 32
-  },
-  {
-    id: "3",
-    name: "mobile/app",
-    owner: "acme-corp", 
-    status: "pending",
-    lastReview: "1 hour ago",
-    reviewCount: 18
-  },
-  {
-    id: "4",
-    name: "docs/website",
-    owner: "acme-corp",
-    status: "inactive",
-    lastReview: "2 days ago",
-    reviewCount: 7
-  }
-];
 
-export const RepositoryCard = () => {
+
+export const RepositoryCard = ({repositories} : {repositories : Repository[]}) => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "active":
@@ -91,7 +58,7 @@ export const RepositoryCard = () => {
       </CardHeader>
       
       <CardContent className="space-y-3">
-        {mockRepositories.map((repo) => (
+        {repositories.map((repo) => (
           <div key={repo.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors group">
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2 mb-1">
