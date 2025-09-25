@@ -5,23 +5,14 @@ import prisma from "../db/prismaClient.js";
 
 export const installationWebhook = async (req: Request, res: Response , action: string , payload: any) => {
 
-
-  switch (action) {
+  try {
+     switch (action) {
     case 'created':
         const token = await getGithubToken(payload.installation.id);
         const repo_URL = payload.installation.repositories_url;
-      // axios.get(repo_URL, {
-      //   headers: {
-      //     Authorization: `Bearer ${token}`,
-      //     Accept: "application/vnd.github+json",
-      //   },
-      // }).then((response) => {
+    
 
-      //  console.log("Repository details", response.data);
-       
-      // });
-
-      await prisma.repos.createMany(
+      await prisma.repo.createMany(
         {
           data: payload.repositories.map((repo: any) => ({
             id: repo.id.toString(),
@@ -29,31 +20,36 @@ export const installationWebhook = async (req: Request, res: Response , action: 
             description: repo.description ? repo.description : "",
             url: payload.installation.account.html_url + `/${repo.name}`,
             ownerId: payload.installation.account.id.toString(),
+            isReviewOn: true
           })),
           skipDuplicates : true
         });
       break;
     case 'deleted':
-      console.log("Installation deleted", payload);
-      // Handle installation deletion logic here
+     
 
-      await prisma.user.delete({
+      await prisma.repo.deleteMany({
+        where: {
+          ownerId: payload.installation.account.id.toString(),
+        },
+      });
+       await prisma.user.delete({
         where: {
           id: payload.installation.account.id.toString(),
         },
       });
 
-      await prisma.repos.deleteMany({
-        where: {
-          ownerId: payload.installation.account.id.toString(),
-        },
-      });
-
       break;
     default:
-      // Handle unknown action
+ 
       break;
   }
 
   res.status(200).send('Webhook received');
+  } catch (error) {
+    console.error('Error processing installation webhook:', error);
+    res.status(500).send('Internal Server Error');
+  }
+
+ 
 };

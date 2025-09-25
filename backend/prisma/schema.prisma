@@ -3,10 +3,8 @@
 
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
- 
 }
 
 datasource db {
@@ -14,45 +12,55 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  repos     Repos[]
-  insights  Insights?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String     @id @default(cuid())
+  email      String     @unique
+  name       String?
+  avatarUrl  String? // optional GitHub/Gravatar avatar
+  repos      Repo[]
+  reviews    Review[]   // reviews made by the user
+  insights   Insight?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 }
 
-model Repos{
-  id          String   @id @default(cuid())
+model Repo {
+  id          String     @id @default(cuid())
   name        String
   description String?
-  url         String   @unique
-  owner      User     @relation(fields: [ownerId], references: [id])
-  ownerId    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  url         String     @unique
+  language    String?     // optional repo language (JS, TS, etc.)
+  stars       Int        @default(0)
+  forks       Int        @default(0)
+  owner       User       @relation(fields: [ownerId], references: [id])
+  ownerId     String
+  reviews     Review[]   // reviews linked to this repo
+  isReviewOn Boolean    @default(false) // if reviews are enabled
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
-model Insights{
-  id        String   @id @default(cuid())
-  owner     User     @relation(fields: [ownerId], references: [id])
-  ownerId   String   @unique
-  totalPR   Int       @default(0)
-  totalReviews Int    @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Insight {
+  id           String    @id @default(cuid())
+  owner        User      @relation(fields: [ownerId], references: [id])
+  ownerId      String    @unique
+  totalPRs     Int       @default(0)
+  totalReviews Int       @default(0)
+  avgRating    Float?    // useful if reviews have ratings
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
-// model ReviewData {
-//   id          String   @id @default(cuid())
-//   repo       Repos    @relation(fields: [repoId], references: [id])
-//   repoId     String
-//   owner   User     @relation(fields: [reviewerId], references: [id])
-//   reviewerId String
-//   createdAt  DateTime @default(now())
-//   updatedAt  DateTime @updatedAt
-// }
-  
+model Review {
+  id          String    @id @default(cuid())
+  owner       User      @relation(fields: [ownerId], references: [id])
+  ownerId     String
+  reviewId   String    @unique
+  repo        Repo      @relation(fields: [repoId], references: [id])
+  repoId      String
+  rating      Int?      
+  comment     String?   
+  approved    Boolean   @default(false) // if PR was approved
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}

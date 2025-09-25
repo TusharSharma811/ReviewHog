@@ -66,7 +66,7 @@ export const githubCallback = async (req: Request, res: Response) => {
     const userToken = generateJWTToken(user);
     return res
       .cookie("token", userToken, { httpOnly: true })
-      .redirect(`http://review-hog.vercel.app/dashboard?uid=${user.id}`);
+      .redirect(`https://review-hog.vercel.app/dashboard?uid=${user.id}`);
   } catch (err) {
     console.error("Callback error:", err);
     return res.status(500).send("Internal Server Error");

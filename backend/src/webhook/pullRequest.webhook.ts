@@ -1,156 +1,205 @@
 import { Request, Response } from "express";
 import chain from "../utils/aiUtil.js";
-import axios, { get } from "axios";
+import axios from "axios";
 import { getGithubToken } from "../utils/getGithubToken.js";
+import prisma  from "../db/prismaClient.js";
+interface PullRequestPayload {
+  action: string;
+  pull_request: {
+    id : string
+    head: { sha: string };
+    comments_url: string;
+    diff_url: string;
+    url: string;
+  };
+  repository: {
+    id : number;
+    owner: { login: string , id : string};
+    name: string;
+  };
+  installation: { id: string };
+}
 
-function extractJsonFromCodeBlock(input: string): any {
-  // Remove ```json ... ``` wrappers
-  const cleaned = input
-    .replace(/^```json\s*/, "") // remove starting ```json
-    .replace(/\s*```$/, ""); // remove ending ```
+interface AIResponse {
+  comment: string;
+  conclusion: "success" | "failure" | "neutral";
+}
 
+function extractJsonFromCodeBlock(input: string): AIResponse {
+  const cleaned = input.replace(/^```json\s*/, "").replace(/\s*```$/, "");
   try {
-    console.log(cleaned);
-
+    console.log("Extracted JSON from AI:", cleaned);
     return JSON.parse(cleaned);
   } catch (err) {
     throw new Error("Invalid JSON inside code block: " + err);
   }
 }
 
-export const pullRequestWebhook = async (
-  req: Request,
-  res: Response,
-  action: string,
-  payload: any
-) => {
-  switch (action) {
-    case "opened":
-      const token = await getGithubToken(payload.installation.id);
-      const URL = payload.pull_request.comments_url;
-      const diffUrl = payload.pull_request.diff_url;
-      const diffRes = await axios.get(diffUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github.v3.diff",
-        },
-      });
-      await axios.post(
-        `${URL}`,
-        {
-          body: `
-            > **Note**  
-> Coderevu is currently analyzing the latest changes in this PR.  
+export const pullRequestWebhook = async (req: Request, res: Response , action : string , payload: PullRequestPayload) => {
+    try {
+  
+  const repoInfo = await prisma.repo.findUnique({
+    where :{
+      id : payload.repository.id.toString() , 
+    }
+  }) ;
+
+  if(!repoInfo ||!repoInfo.isReviewOn){
+    return ; 
+  }
+  if (action !== "opened") {
+    return res.status(200).send("Action ignored");
+  }
+
+
+    const token = await getGithubToken(payload.installation.id);
+    const commentsUrl = payload.pull_request.comments_url;
+    const diffRes = await axios.get(payload.pull_request.diff_url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github.v3.diff",
+      },
+    });
+
+    // Initial "Analyzing" comment
+    await axios.post(
+      commentsUrl,
+      {
+        body: `
+> **Note**  
+> ReviewHog is currently analyzing the latest changes in this PR.  
 > This may take a few minutes — sit tight, good things take time!
 
 ---
-
-### 📥 Commits  
-
-### 📒 Files selected for review (1)  
-
----
-
-
-
-            `,
-          commit_id: payload.pull_request.head.sha,
+`,
+        commit_id: payload.pull_request.head.sha,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
         },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/vnd.github+json",
-          },
-        }
-      );
+      }
+    );
 
-      const diffText = diffRes.data;
-      const prFilesUrl = `${payload.pull_request.url}/files`;
-      const prFilesRes = await axios.get(prFilesUrl, {
+    // Fetch PR files
+    const prFilesRes: any = await axios.get(
+      `${payload.pull_request.url}/files`,
+      {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/vnd.github.v3+json",
         },
-      });
-      const createResp: any = await axios.post(
-        `https://api.github.com/repos/${payload.repository.owner.login}/${payload.repository.name}/check-runs`,
-        {
-          name: "AI Code Review",
-          head_sha: payload.pull_request.head.sha,
-          status: "in_progress",
+      }
+    );
+
+    // Create Check Run
+    const createResp: any = await axios.post(
+      `https://api.github.com/repos/${payload.repository.owner.login}/${payload.repository.name}/check-runs`,
+      {
+        name: "AI Code Review",
+        head_sha: payload.pull_request.head.sha,
+        status: "in_progress",
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
         },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/vnd.github+json",
-          },
-        }
-      );
-      const checkRunId = createResp.data.id;
-      const file_data: string[] = [];
-      for (const file of prFilesRes.data as any[]) {
+      }
+    );
+
+    const checkRunId = createResp.data.id;
+
+    // Fetch file contents in parallel
+    const fileDataArr = await Promise.all(
+      prFilesRes.data.map(async (file: any) => {
         if (file.status === "removed") {
-          console.log(
-            `File ${file.filename} has been removed, skipping review.`
-          );
+          console.log(`File ${file.filename} removed, skipping.`);
+          return null;
         }
-        const contentUrl = file.contents_url;
-        const ContentRes: any = await axios.get(contentUrl, {
+        const contentRes: any = await axios.get(file.contents_url, {
           headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github.v3.raw",
           },
         });
-        const full_file = ContentRes.data;
-        file_data.push(
-          `File Path: ${file.filename}\nContent:\n${full_file}\n\n`
-        );
+        return `File Path: ${file.filename}\nContent:\n${contentRes.data}\n\n`;
+      })
+    );
+
+    const fileData = fileDataArr.filter(Boolean) as string[];
+
+
+    const aiResponse = await chain.invoke({
+      diff: diffRes.data,
+      full_file: fileData,
+    });
+
+    const extracted = extractJsonFromCodeBlock(aiResponse.content as string);
+
+    if (!extracted.comment || !extracted.conclusion) {
+      throw new Error("AI response missing required fields");
+    }
+
+    // Post AI comment
+    await axios.post(
+      commentsUrl,
+      {
+        body: extracted.comment,
+        commit_id: payload.pull_request.head.sha,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+        },
       }
-      const response = await chain.invoke({
-        diff: diffText,
-        full_file: file_data,
-      });
-      console.log(response);
-      const rawContent = response.content;
-      const extracted = extractJsonFromCodeBlock(rawContent as string);
+    );
 
-      await axios.post(
-        `${URL}`,
-        {
-          body: `${extracted.comment}`,
-          commit_id: payload.pull_request.head.sha,
+    await axios.patch(
+      `https://api.github.com/repos/${payload.repository.owner.login}/${payload.repository.name}/check-runs/${checkRunId}`,
+      {
+        name: "AI Code Review",
+        head_sha: payload.pull_request.head.sha,
+        status: "completed",
+        conclusion: extracted.conclusion,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
         },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/vnd.github+json",
-          },
-        }
-      );
-      await axios.patch(
-        `https://api.github.com/repos/${payload.repository.owner.login}/${payload.repository.name}/check-runs/${checkRunId}`,
-        {
-          name: "AI Code Review",
-          head_sha: payload.pull_request.head.sha,
-          status: "completed",
-          conclusion: extracted.conclusion,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/vnd.github+json",
-          },
-        }
-      );
+      }
+    );
 
-      break;
-    case "deleted":
-      // Handle installation deleted
-      break;
-    default:
-      // Handle unknown action
-      break;
+    await prisma.review.create({
+      data: {
+        reviewId : `${payload.pull_request.id}`.toString(),
+        repoId: `${payload.repository.id}`.toString(),
+        ownerId: `${payload.repository.owner.id}`.toString(),
+        comment: extracted.comment,
+        rating: extracted.conclusion === "success" ? 5 : extracted.conclusion === "neutral" ? 3 : 1,
+        
+      },
+    });
+
+    await prisma.insight.upsert({
+      where: { ownerId: `${payload.repository.owner.id}`.toString() },
+      update: {
+        totalReviews: { increment: 1 },
+        totalPRs: { increment: 1 },
+      },
+      create: {
+        ownerId: `${payload.repository.owner.id}`.toString(),
+        totalReviews: 1,
+        totalPRs: 1,
+      },
+    });
+
+    res.status(200).send("Webhook processed successfully");
+  } catch (err) {
+    console.error("Error processing PR webhook:", err);
+    res.status(500).send("Internal Server Error");
   }
-
-  res.status(200).send("Webhook received");
 };
