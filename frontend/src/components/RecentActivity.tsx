@@ -14,6 +14,21 @@ interface Activity {
 
 
 export const RecentActivity = ({recentActivities} : {recentActivities: Activity[]}) => {
+  if(!recentActivities || recentActivities.length === 0) {
+    return (
+      <Card className="bg-gradient-card border-border shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <GitPullRequest className="h-5 w-5 text-primary" />
+            <span>Recent Activity</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">No recent activity available.</p>
+        </CardContent>
+      </Card>
+    );
+  }
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "success":
