@@ -29,8 +29,10 @@ const Dashboard = () => {
         console.log("Fetched Data:", data);
         
         setRepositories(data.repos);
-        setMetrics(data.reviews);
-        setRecentActivities(data.insights);
+        setMetrics(data.insights);
+        setRecentActivities( data.reviews);
+        console.log(metrics);
+        
       } catch (error) {
         console.error("Error fetching user data:", error);
       }
@@ -72,8 +74,8 @@ const Dashboard = () => {
           
           {/* Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <MetricsCard title="Open PRs" value={metrics.totalPRs?.toString() || '0'} icon={GitPullRequest} description="Number of open pull requests across all repositories." />
-           <MetricsCard title="Total Repositories" value={repositories.length.toString() || '0'} icon={GitBranchIcon} description="Total number of repositories owned by the user." />
+            <MetricsCard title="Open PRs" value={metrics && metrics.totalPRs?.toString() || '0'} icon={GitPullRequest} description="Number of open pull requests across all repositories." />
+           <MetricsCard title="Total Repositories" value={repositories && repositories.length.toString() || '0'} icon={GitBranchIcon} description="Total number of repositories owned by the user." />
           </div>
         </div>
 
