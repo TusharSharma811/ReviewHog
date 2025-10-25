@@ -8,9 +8,6 @@ export const installationWebhook = async (req: Request, res: Response , action: 
   try {
      switch (action) {
     case 'created':
-      
-    
-
       await prisma.repo.createMany(
         {
           data: payload.repositories.map((repo: any) => ({

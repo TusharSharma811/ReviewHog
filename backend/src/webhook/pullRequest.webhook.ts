@@ -23,6 +23,7 @@ interface PullRequestPayload {
 interface AIResponse {
   comment: string;
   conclusion: "success" | "failure" | "neutral";
+  rating : number ;
 }
 
 function extractJsonFromCodeBlock(input: string): AIResponse {
@@ -57,7 +58,6 @@ export const pullRequestWebhook = async (
     const token = await getGithubToken(payload.installation.id);
     const commentsUrl = payload.pull_request.comments_url;
 
-    // Create Check Run
     const createResp: any = await axios.post(
       `https://api.github.com/repos/${payload.repository.owner.login}/${payload.repository.name}/check-runs`,
       {
@@ -104,7 +104,7 @@ export const pullRequestWebhook = async (
         aiResponse = await safeRunCodeReview(diffRes.data, `File Path: ${file.filename}\nContent:\n${contentRes.data}`);
       } catch (err) {
         console.error(`AI failed for ${file.filename}:`, err);
-        aiResponse = { comment: "AI review failed.", conclusion: "neutral" };
+        aiResponse = { comment: "AI review failed.", conclusion: "neutral" , rating : 2};
       }
 
       // Update comment with AI review
@@ -121,7 +121,7 @@ export const pullRequestWebhook = async (
           repoId: payload.repository.id.toString(),
           ownerId: payload.repository.owner.id.toString(),
           comment: aiResponse.comment,
-          rating: aiResponse.conclusion === "success" ? 5 : aiResponse.conclusion === "neutral" ? 3 : 1,
+          rating: aiResponse.rating,
         },
       });
     }

@@ -29,13 +29,13 @@ model Repo {
   name        String
   description String?
   url         String     @unique
-  language    String?     // optional repo language (JS, TS, etc.)
+  language    String?     
   stars       Int        @default(0)
   forks       Int        @default(0)
   owner       User       @relation(fields: [ownerId], references: [id])
   ownerId     String
-  reviews     Review[]   // reviews linked to this repo
-  isReviewOn Boolean    @default(false) // if reviews are enabled
+  reviews     Review[]   
+  isReviewOn Boolean    @default(false) 
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 }
@@ -46,7 +46,7 @@ model Insight {
   ownerId      String    @unique
   totalPRs     Int       @default(0)
   totalReviews Int       @default(0)
-  avgRating    Float?    // useful if reviews have ratings
+  avgRating    Float?    
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }
