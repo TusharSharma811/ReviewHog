@@ -6,8 +6,8 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const model = new ChatGoogleGenerativeAI({
-  model: "gemini-2.5-flash",
-  temperature: 0.4 ,
+  model: "gemini-2.5-pro",
+  temperature: 0.6 ,
   apiKey: process.env.GEMINI_API_KEY
 });
 
@@ -27,7 +27,8 @@ Output in the format :
 
 {{  
   "comment": "Looks good to me!" ,
-  "conclusion" : ["success" , "failure"]
+  "conclusion" : ["success" , "failure"],
+  "rating" : 1-5
 }}
 
 Here is the code diff:

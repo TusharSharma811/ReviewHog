@@ -23,6 +23,7 @@ interface PullRequestPayload {
 interface AIResponse {
   comment: string;
   conclusion: "success" | "failure" | "neutral";
+  rating : number ;
 }
 
 function extractJsonFromCodeBlock(input: string): AIResponse {
@@ -179,7 +180,7 @@ export const pullRequestWebhook = async (req: Request, res: Response , action : 
         repoId: `${payload.repository.id}`.toString(),
         ownerId: `${payload.repository.owner.id}`.toString(),
         comment: extracted.comment,
-        rating: extracted.conclusion === "success" ? 5 : extracted.conclusion === "neutral" ? 3 : 1,
+        rating: extracted.rating,
         
       },
     });
