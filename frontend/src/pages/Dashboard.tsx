@@ -1,17 +1,49 @@
-import { Bot, GitBranch, CheckCircle } from "lucide-react";
+import { Bot , GitBranchIcon , GitPullRequest} from "lucide-react";
 import { MetricsCard } from "@/components/MetricsCard";
 import { RecentActivity } from "@/components/RecentActivity";
 import { RepositoryCard } from "@/components/RepositoryCard";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+interface metrics {
+  totalPRs?: number;
+  totalReviews?: number;
+  avgReviewTime?: string;
+  issuesFound?: number;
+}
 
 const Dashboard = () => {
-  useEffect(() => {
-    document.title = "Dashboard - Review Hog";
 
-  }, []);
+  const uid = new URLSearchParams(window.location.search).get("uid");
+  console.log("User ID:", uid);
+  const [repositories , setRepositories] = useState([]) ;
+  const [metrics , setMetrics] = useState<metrics>({}) ;
+  const [recentActivities , setRecentActivities] = useState([]) ;
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch(`https://vulture-needed-immensely.ngrok-free.app/api/users/data/me/insights?uid=${uid}` , {
+          method : "GET" ,
+          credentials : "include"
+        });
+        const data = await response.json();
+        console.log("Fetched Data:", data);
+        
+        setRepositories(data.repos);
+        setMetrics(data.insights);
+        setRecentActivities( data.reviews);
+        console.log(metrics);
+        
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+    if (uid) {
+      fetchData();
+    }
+  }, [uid]);
   return (
     <div className="min-h-screen bg-gradient-subtle">
-
+      {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -20,7 +52,7 @@ const Dashboard = () => {
                 <Bot className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-foreground">Review Hog</h1>
+                <h1 className="text-xl font-semibold text-foreground">ReviewHog</h1>
                 <p className="text-sm text-muted-foreground">GitHub Integration Dashboard</p>
               </div>
             </div>
@@ -42,24 +74,8 @@ const Dashboard = () => {
           
           {/* Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <MetricsCard
-              title="Reviews Completed"
-              value="1,247"
-              change="+12%"
-              changeType="positive"
-              icon={CheckCircle}
-              description="This month"
-            />
-    
-            <MetricsCard
-              title="Repositories"
-              value="23"
-              change="+3"
-              changeType="positive"
-              icon={GitBranch}
-              description="Connected"
-            />
-         
+            <MetricsCard title="Open PRs" value={metrics && metrics.totalPRs?.toString() || '0'} icon={GitPullRequest} description="Number of open pull requests across all repositories." />
+           <MetricsCard title="Total Repositories" value={repositories && repositories.length.toString() || '0'} icon={GitBranchIcon} description="Total number of repositories owned by the user." />
           </div>
         </div>
 
@@ -67,12 +83,12 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Recent Activity */}
           <div className="lg:col-span-2">
-            <RecentActivity />
+            <RecentActivity recentActivities={recentActivities} />
           </div>
 
           {/* Repository Status */}
           <div className="space-y-6">
-            <RepositoryCard />
+            <RepositoryCard repositories={repositories}/>
           </div>
         </div>
       </main>
