@@ -4,12 +4,14 @@ import { Badge } from "@/components/ui/badge";
 
 interface Activity {
   id: string;
+  comment: string;
   type: "review_completed" | "review_failed" | "review_pending";
   repository: string;
   pullRequest: string;
   author: string;
   timestamp: string;
   status: "success" | "failed" | "pending";
+  rating?: number;
 }
 
 
@@ -85,7 +87,7 @@ export const RecentActivity = ({recentActivities} : {recentActivities: Activity[
               </div>
               
               <p className="text-sm text-muted-foreground mb-1">
-                {activity.pullRequest}
+                {activity.comment}
               </p>
               
               <div className="flex items-center space-x-1 text-xs text-muted-foreground">
