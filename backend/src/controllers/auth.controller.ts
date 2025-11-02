@@ -3,24 +3,24 @@ import axios from "axios";
 import prisma from "../db/prismaClient.js";
 import { generateJWTToken } from "../utils/jwtTokenGenerator.js";
 export const githubLogin = async (req: Request, res: Response) => {
-    try{
-        console.log("GitHub Login Initiated" , process.env.GITHUB_REDIRECT_URI);
-        const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${process.env.GITHUB_REDIRECT_URI}&scope=user:email%20repo`;
-        res.redirect(githubAuthUrl);
-    } catch (error) {
-        console.error("Error during GitHub login:", error);
-        res.status(500).send("Internal Server Error");
-    }
+  try {
+    console.log("GitHub Login Initiated", process.env.GITHUB_REDIRECT_URI);
+    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${process.env.GITHUB_REDIRECT_URI}&scope=user:email%20repo`;
+    res.redirect(githubAuthUrl);
+  } catch (error) {
+    console.error("Error during GitHub login:", error);
+    res.status(500).send("Internal Server Error");
+  }
 };
 
 export const githubCallback = async (req: Request, res: Response) => {
   const { code } = req.query;
   console.log("GitHub Callback Received, code:", code);
-  
+
   if (!code) return res.status(400).send("Missing code parameter");
 
   try {
-    const tokenRes : any = await axios.post(
+    const tokenRes: any = await axios.post(
       "https://github.com/login/oauth/access_token",
       {
         client_id: process.env.GITHUB_CLIENT_ID,
@@ -36,8 +36,7 @@ export const githubCallback = async (req: Request, res: Response) => {
 
     const accessToken = tokenRes.data.access_token;
 
-  
-    const userInfo : any = await axios.get("https://api.github.com/user", {
+    const userInfo: any = await axios.get("https://api.github.com/user", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
@@ -47,9 +46,8 @@ export const githubCallback = async (req: Request, res: Response) => {
 
     // const primaryEmail = userEmail.data.find((e: any) => e.primary)?.email;
 
-
     let user = await prisma.user.findUnique({
-      where: { id: userInfo.data.id.toString() }, 
+      where: { id: userInfo.data.id.toString() },
     });
 
     if (!user) {
@@ -61,11 +59,28 @@ export const githubCallback = async (req: Request, res: Response) => {
         },
       });
 
-      return res.redirect("https://github.com/apps/reviewhog/installations/new");
+       const userToken = generateJWTToken(user);
+
+  // Set cookie first
+  res.cookie("token", userToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+      return res.redirect(
+        "https://github.com/apps/reviewhog/installations/new"
+      );
     }
     const userToken = generateJWTToken(user);
     return res
-      .cookie("token", userToken, { httpOnly: true })
+      .cookie("token", userToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      })
       .redirect(`https://review-hog.vercel.app/dashboard?uid=${user.id}`);
   } catch (err) {
     console.error("Callback error:", err);

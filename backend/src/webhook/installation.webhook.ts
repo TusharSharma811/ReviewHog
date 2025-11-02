@@ -1,6 +1,6 @@
 import { Request , Response } from "express";
 import axios from "axios";
-import { getGithubToken } from "../utils/getGithubToken.js";
+
 import prisma from "../db/prismaClient.js";
 
 export const installationWebhook = async (req: Request, res: Response , action: string , payload: any) => {
@@ -8,10 +8,6 @@ export const installationWebhook = async (req: Request, res: Response , action: 
   try {
      switch (action) {
     case 'created':
-        const token = await getGithubToken(payload.installation.id);
-        const repo_URL = payload.installation.repositories_url;
-    
-
       await prisma.repo.createMany(
         {
           data: payload.repositories.map((repo: any) => ({
@@ -33,6 +29,7 @@ export const installationWebhook = async (req: Request, res: Response , action: 
           ownerId: payload.installation.account.id.toString(),
         },
       });
+
        await prisma.user.delete({
         where: {
           id: payload.installation.account.id.toString(),

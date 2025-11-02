@@ -1,51 +1,76 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { ChatPromptTemplate, PromptTemplate } from "@langchain/core/prompts";
+import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { StructuredOutputParser } from "langchain/output_parsers";
 import dotenv from "dotenv";
-
 
 dotenv.config();
 
+interface AIResponse {
+  comment: string;
+  conclusion: "success" | "failure" | "neutral";
+  rating : number;
+}
+
+const parser = StructuredOutputParser.fromNamesAndDescriptions({
+  comment: "Code review comment with suggestions",
+  conclusion: "Either 'success' or 'failure'",
+  rating:"Between 1 to 5 based on quality of code or review and this must be a number"
+});
+
+
+const formatInstructions = parser.getFormatInstructions();
+
 const model = new ChatGoogleGenerativeAI({
   model: "gemini-2.5-pro",
-  temperature: 0.6 ,
+  temperature: 0.7,
   apiKey: process.env.GEMINI_API_KEY
 });
 
 
-const prompt = `You are a Senior Software Engineer performing a professional code review.  
-You will receive a code diff (GitHub-style) and must return detailed, high-quality suggestions.
+const prompt = ChatPromptTemplate.fromTemplate(`
+You are a Senior Software Engineer performing a professional code review.
 
-Your response should be a single comment that includes:
-1. A summary of the changes made in the diff.
-2. Any potential issues or improvements you notice.
-3. Suggestions for best practices or optimizations.
-4. If the code is good, simply say "Looks good to me!" without any further comments.
-5. Use markdown formatting for code snippets, if applicable.
-6. Be concise but thorough in your review.
-7. Use markdown formatting for comments and output a single string response.
-Output in the format : 
-
-{{  
-  "comment": "Looks good to me!" ,
-  "conclusion" : ["success" , "failure"],
-  "rating" : 1-5
-}}
+⚠️ Important: Always respond **ONLY in valid JSON** following these instructions exactly:
+${formatInstructions}
 
 Here is the code diff:
 {diff}
 
 Here is the full file content:
 {full_file}
+`);
 
 
+const chain = prompt.pipe(model).pipe(parser);
 
-`
+async function safeRunCodeReview(diff: string, full_file: string): Promise<AIResponse> {
+  try {
+    const result = await chain.invoke({
+      formatInstructions, 
+      diff,
+      full_file,
+    });
 
-const promptTemplate = PromptTemplate.fromTemplate(
+ 
+    if (
+      result &&
+      typeof result.comment === "string" &&
+      typeof result.conclusion === "string" &&
+      typeof result.rating === "number" &&
+      ["success", "failure", "neutral"].includes(result.conclusion)
+    ) {
+      // Type assertion is safe here after validation
+      return result as unknown as AIResponse;
+    }
 
-  prompt
-);
+    
+    console.warn("AI returned invalid structure, using fallback.");
+    return { comment: "AI review failed.", conclusion: "neutral" , rating : 2};
+  } catch (err) {
+    console.error("AI invocation failed:", err);
+    return { comment: "AI review failed.", conclusion: "neutral" , rating : 2};
+  }
+}
 
-  const chain = promptTemplate.pipe(model);
 
-export default chain;
+export { chain, safeRunCodeReview };
