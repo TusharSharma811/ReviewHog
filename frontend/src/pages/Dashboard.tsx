@@ -1,12 +1,17 @@
-import { Bot, GitBranch, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { Bot, GitBranch, CheckCircle } from "lucide-react";
 import { MetricsCard } from "@/components/MetricsCard";
 import { RecentActivity } from "@/components/RecentActivity";
 import { RepositoryCard } from "@/components/RepositoryCard";
+import { useEffect } from "react";
 
 const Dashboard = () => {
+  useEffect(() => {
+    document.title = "Dashboard - Review Hog";
+
+  }, []);
   return (
     <div className="min-h-screen bg-gradient-subtle">
-      {/* Header */}
+
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -15,7 +20,7 @@ const Dashboard = () => {
                 <Bot className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-foreground">AI Review Bot</h1>
+                <h1 className="text-xl font-semibold text-foreground">Review Hog</h1>
                 <p className="text-sm text-muted-foreground">GitHub Integration Dashboard</p>
               </div>
             </div>
@@ -45,14 +50,7 @@ const Dashboard = () => {
               icon={CheckCircle}
               description="This month"
             />
-            <MetricsCard
-              title="Success Rate"
-              value="94.2%"
-              change="+2.1%"
-              changeType="positive"
-              icon={AlertCircle}
-              description="Last 30 days"
-            />
+    
             <MetricsCard
               title="Repositories"
               value="23"
@@ -61,14 +59,7 @@ const Dashboard = () => {
               icon={GitBranch}
               description="Connected"
             />
-            <MetricsCard
-              title="Avg Review Time"
-              value="2.4m"
-              change="-0.3m"
-              changeType="positive"
-              icon={Clock}
-              description="Per pull request"
-            />
+         
           </div>
         </div>
 
