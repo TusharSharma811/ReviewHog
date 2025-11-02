@@ -138,17 +138,6 @@ export const pullRequestWebhook = async (
       { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" } }
     );
 
-<<<<<<< HEAD
-    await prisma.review.create({
-      data: {
-        reviewId : `${payload.pull_request.id}`.toString(),
-        repoId: `${payload.repository.id}`.toString(),
-        ownerId: `${payload.repository.owner.id}`.toString(),
-        comment: extracted.comment,
-        rating: extracted.rating,
-        
-      },
-    });
 
     await prisma.insight.upsert({
       where: { ownerId: `${payload.repository.owner.id}`.toString() },
@@ -164,9 +153,6 @@ export const pullRequestWebhook = async (
     });
 
     res.status(200).send("Webhook processed successfully");
-=======
-    res.status(200).send("Webhook processed with live comments successfully");
->>>>>>> new-feature
   } catch (err) {
     console.error("Error processing PR webhook:", err);
     res.status(500).send("Internal Server Error");

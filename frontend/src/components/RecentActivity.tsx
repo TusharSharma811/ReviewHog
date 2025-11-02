@@ -1,4 +1,4 @@
-import { CheckCircle, XCircle, AlertTriangle, GitPullRequest, User } from "lucide-react";
+import {  GitPullRequest, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -12,6 +12,9 @@ interface Activity {
   timestamp: string;
   status: "success" | "failed" | "pending";
   rating?: number;
+  repo:{
+    name: string;
+  } ;
 }
 
 
@@ -31,19 +34,7 @@ export const RecentActivity = ({recentActivities} : {recentActivities: Activity[
       </Card>
     );
   }
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "success":
-        return <CheckCircle className="h-4 w-4 text-success" />;
-      case "failed":
-        return <XCircle className="h-4 w-4 text-destructive" />;
-      case "pending":
-        return <AlertTriangle className="h-4 w-4 text-warning" />;
-      default:
-        return <AlertTriangle className="h-4 w-4 text-muted-foreground" />;
-    }
-  };
-
+  
   const getStatusBadge = (status: string) => {
     const variants = {
       success: "bg-success/10 text-success border-success/20",
@@ -69,15 +60,12 @@ export const RecentActivity = ({recentActivities} : {recentActivities: Activity[
       <CardContent className="space-y-4">
         {recentActivities.map((activity) => (
           <div key={activity.id} className="flex items-start space-x-4 p-4 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors">
-            <div className="mt-1">
-              {getStatusIcon(activity.status)}
-            </div>
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
                   <p className="text-sm font-medium text-foreground truncate">
-                    {activity.repository}
+                    {activity.repo.name}
                   </p>
                   {getStatusBadge(activity.status)}
                 </div>
@@ -86,7 +74,7 @@ export const RecentActivity = ({recentActivities} : {recentActivities: Activity[
                 </span>
               </div>
               
-              <p className="text-sm text-muted-foreground mb-1">
+              <p className="text-sm  mb-1">
                 {activity.comment.toString().toLowerCase().slice(0, 100)}{activity.comment.length > 10 ? '...' : ''}
               </p>
               
