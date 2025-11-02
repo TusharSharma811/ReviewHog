@@ -87,7 +87,7 @@ export const RecentActivity = ({recentActivities} : {recentActivities: Activity[
               </div>
               
               <p className="text-sm text-muted-foreground mb-1">
-                {activity.comment}
+                {activity.comment.toString().toLowerCase().slice(0, 100)}{activity.comment.length > 10 ? '...' : ''}
               </p>
               
               <div className="flex items-center space-x-1 text-xs text-muted-foreground">
