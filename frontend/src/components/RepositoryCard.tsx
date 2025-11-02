@@ -67,7 +67,7 @@ export const RepositoryCard = ({repositories} : {repositories : Repository[]}) =
   };
 
   return (
-    <Card className="bg-gradient-card border-border shadow-card">
+    <Card className="bg-gradient-card border-border shadow-card max-h-[600px] overflow-y-scroll">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center space-x-2">

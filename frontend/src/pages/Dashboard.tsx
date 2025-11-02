@@ -73,9 +73,9 @@ const Dashboard = () => {
           <h2 className="text-2xl font-bold text-foreground mb-6">Dashboard Overview</h2>
           
           {/* Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <MetricsCard title="Open PRs" value={metrics && metrics.totalPRs?.toString() || '0'} icon={GitPullRequest} description="Number of open pull requests across all repositories." />
-           <MetricsCard title="Total Repositories" value={repositories && repositories.length.toString() || '0'} icon={GitBranchIcon} description="Total number of repositories owned by the user." />
+          <div className="flex flex-col md:flex-row md:space-x-6 space-y-6 md:space-y-0">
+            <MetricsCard  title="Total PR reviewed" value={metrics && metrics.totalPRs?.toString() || '0'} icon={GitPullRequest} description="Number of open pull requests across all repositories." />
+           <MetricsCard  title="Total Repositories" value={repositories && repositories.length.toString() || '0'} icon={GitBranchIcon} description="Total number of repositories owned by the user." />
           </div>
         </div>
 
