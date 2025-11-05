@@ -31,7 +31,7 @@ const prompt = ChatPromptTemplate.fromTemplate(`
 You are a Senior Software Engineer performing a professional code review.
 
 ⚠️ Important: Always respond **ONLY in valid JSON** following these instructions exactly:
-${formatInstructions}
+{formatInstructions}
 
 Here is the code diff:
 {diff}

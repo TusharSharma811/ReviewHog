@@ -8,20 +8,34 @@ export const getUserInsights = async (req: Request, res: Response) => {
   }
   try {
     const userData = await prisma.user.findUnique({
-      where: { id: userId },
+  where: { id: userId },
+  include: {
+    repos: {
       include: {
-        repos: { include: { owner: true, reviews: { orderBy: { createdAt: "desc" }, take: 5 } } },
+        owner: true,
         reviews: {
-                include: { repo: true},
-                orderBy: { createdAt: "desc" },
-                take: 5,
-                select:{
-                  repo:{ select: { id: true, name: true, ownerId: true } },
-                }
-        },
-        insights: true,
+          orderBy: { createdAt: "desc" },
+          take: 5
+        }
+      }
+    },
+    reviews: {
+      include: {
+        repo: {
+          select: {
+            id: true,
+            name: true,
+            ownerId: true
+          }
+        }
       },
-    });
+      orderBy: { createdAt: "desc" },
+      take: 5
+    },
+    insights: true,
+  },
+});
+
     if (!userData) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -33,11 +47,11 @@ export const getUserInsights = async (req: Request, res: Response) => {
 };
 
 export const toggleGithubReview = async (req: Request, res: Response) => {
-  const userId = req.query.uid as string;
+  
   const { repoId } = req.params;
 
-  if (!userId || !repoId) {
-    return res.status(400).json({ message: "User ID and Repository ID are required" });
+  if ( !repoId) {
+    return res.status(400).json({ message: "Repository ID is required" });
   }
 
   try {

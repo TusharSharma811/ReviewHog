@@ -117,7 +117,7 @@ export const pullRequestWebhook = async (
       // Save review in DB
       await prisma.review.create({
         data: {
-          reviewId: `${payload.pull_request.id}-${file.filename}`,
+          reviewId:payload.pull_request.id.toString(),
           repoId: payload.repository.id.toString(),
           ownerId: payload.repository.owner.id.toString(),
           comment: aiResponse.comment,
