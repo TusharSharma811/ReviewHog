@@ -11,7 +11,7 @@ export const githubWebhook = async (req: Request, res: Response) => {
   try {
     const event = req.headers["x-github-event"];
     const payload = req.body;
-    console.log(event, payload);
+ 
 
     if (event === "installation") {
       await installationWebhook(req, res, payload.action, payload);

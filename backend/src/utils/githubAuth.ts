@@ -17,7 +17,7 @@ export function generateAppJwt(): string {
   // Clean up the private key string
   const privateKey = process.env.GITHUB_APP_PRIVATE_KEY
     .replace(/\\n/g, "\n")
-    .replace(/^["']|["']$/g, ''); // Remove quotes if present
+    .replace(/^["']|["']$/g, '');
   
   try {
     return jwt.sign(
@@ -26,7 +26,7 @@ export function generateAppJwt(): string {
         exp: now + 600, 
         iss: parseInt(process.env.GITHUB_APP_ID, 10)
       },
-      privateKey, // Pass the string directly
+      privateKey, 
       { algorithm: "RS256" }
     );
   } catch (error) {

@@ -4,7 +4,7 @@ import prisma from "../db/prismaClient.js";
 import { generateJWTToken } from "../utils/jwtTokenGenerator.js";
 export const githubLogin = async (req: Request, res: Response) => {
   try {
-    console.log("GitHub Login Initiated", process.env.GITHUB_REDIRECT_URI);
+ 
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${process.env.GITHUB_REDIRECT_URI}&scope=user:email%20repo`;
     res.redirect(githubAuthUrl);
   } catch (error) {
@@ -15,7 +15,7 @@ export const githubLogin = async (req: Request, res: Response) => {
 
 export const githubCallback = async (req: Request, res: Response) => {
   const { code } = req.query;
-  console.log("GitHub Callback Received, code:", code);
+
 
   if (!code) return res.status(400).send("Missing code parameter");
 
@@ -40,11 +40,6 @@ export const githubCallback = async (req: Request, res: Response) => {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-    // const userEmail : any = await axios.get("https://api.github.com/user/emails", {
-    //   headers: { Authorization: `Bearer ${accessToken}` },
-    // });
-
-    // const primaryEmail = userEmail.data.find((e: any) => e.primary)?.email;
 
     let user = await prisma.user.findUnique({
       where: { id: userInfo.data.id.toString() },
@@ -61,7 +56,7 @@ export const githubCallback = async (req: Request, res: Response) => {
 
        const userToken = generateJWTToken(user);
 
-  // Set cookie first
+  
   res.cookie("token", userToken, {
     httpOnly: true,
     secure: true,

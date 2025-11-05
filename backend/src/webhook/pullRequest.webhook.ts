@@ -88,17 +88,16 @@ export const pullRequestWebhook = async (
       );
       const commentId = tempCommentRes.data.id;
 
-      // Fetch file content
       const contentRes: any = await axios.get(file.contents_url, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github.v3.raw" },
       });
 
-      // Fetch diff for this file (optional, or use full PR diff)
+
       const diffRes : {data : string} = await axios.get(payload.pull_request.diff_url, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github.v3.diff" },
       });
 
-      // Run AI review per file
+   
       let aiResponse: AIResponse;
       try {
         aiResponse = await safeRunCodeReview(diffRes.data, `File Path: ${file.filename}\nContent:\n${contentRes.data}`);
@@ -107,14 +106,14 @@ export const pullRequestWebhook = async (
         aiResponse = { comment: "AI review failed.", conclusion: "neutral" , rating : 2};
       }
 
-      // Update comment with AI review
+      
       await axios.patch(
         `https://api.github.com/repos/${payload.repository.owner.login}/${payload.repository.name}/issues/comments/${commentId}`,
         { body: aiResponse.comment },
         { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" } }
       );
 
-      // Save review in DB
+  
       await prisma.review.create({
         data: {
           reviewId:payload.pull_request.id.toString(),
