@@ -73,7 +73,7 @@ const LandingPage = () => {
             
             <div className="text-center">
               <p className="text-xs text-muted-foreground">
-                By connecting your account, you agree to install the AI PR Buddy GitHub App
+                By connecting your account, you agree to install the ReviewHog GitHub App
               </p>
             </div>
           </div>

@@ -1,6 +1,5 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-import { StructuredOutputParser } from "langchain/output_parsers";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -11,61 +10,76 @@ interface AIResponse {
   rating: number;
 }
 
-
-const parser = StructuredOutputParser.fromNamesAndDescriptions({
-  comment: "Code review comment with suggestions",
-  conclusion: "Either 'success', 'failure', or 'neutral'",
-  rating: "A number between 1 to 5 based on code quality",
-});
-
-const formatInstructions = parser.getFormatInstructions();
-
-
 const model = new ChatGoogleGenerativeAI({
-  model: "gemini-2.5-pro",
+  model: "gemini-2.5-flash",
   temperature: 0.7,
   apiKey: process.env.GEMINI_API_KEY!,
 });
 
-
 const prompt = ChatPromptTemplate.fromTemplate(`
-You are a Senior Software Engineer performing a professional code review.
+You are a Senior Software Engineer performing a professional code review **only for the file shown below**.
 
-⚠️ Important: Always respond ONLY in valid JSON following these instructions exactly:
-{{format_instructions}}
+Review strictly the code in this file. 
+Ignore any unrelated context or previously seen code from other languages or files.
 
-Here is the code diff:
-{{diff}}
+If the change is trivial (like adding print/log statements), just respond briefly and objectively.
 
-Here is the full file content:
-{{full_file}}
+You must respond ONLY in valid JSON with the following fields:
+{{
+  "comment": "Detailed feedback about this specific file",
+  "conclusion": "success" | "failure" | "neutral",
+  "rating": 1–5
+}}
+
+Here is the Git diff for this file:
+{diff}
+
+Here is the full file content for reference:
+{full_file}
 `);
 
-const chain = prompt.pipe(model).pipe(parser);
+const chain = prompt.pipe(model);
 
-
-async function safeRunCodeReview(diff: string, full_file: string): Promise<AIResponse> {
+export async function safeRunCodeReview(diff: string, full_file: string): Promise<AIResponse> {
   try {
-    const result = await chain.invoke({
-      format_instructions: formatInstructions,
-      diff,
-      full_file,
-    });
+    const response = await chain.invoke({ diff, full_file });
 
-    if (
-      result &&
-      typeof result.comment === "string" &&
-      ["success", "failure", "neutral"].includes(result.conclusion.toLowerCase())
-    ) {
-      return result as unknown as AIResponse;
+    
+    let rawOutput = "";
+    if (typeof response.content === "string") {
+      rawOutput = response.content;
+    } else if (Array.isArray(response.content)) {
+      rawOutput = response.content
+        .map((p: any) => (typeof p?.text === "string" ? p.text : ""))
+        .join("\n");
+    } else if ((response as any)?.text) {
+      rawOutput = (response as any).text;
     }
 
-    console.warn("⚠️ AI returned invalid structure. Using fallback.");
-    return { comment: "AI review failed.", conclusion: "neutral", rating: 2 };
+  
+    const clean = rawOutput.replace(/```json|```/gi, "").trim();
+
+    const parsed = JSON.parse(clean);
+
+    
+    const comment =
+      typeof parsed.comment === "string"
+        ? parsed.comment
+        : "AI did not provide a comment.";
+
+    const conclusion =
+      ["success", "failure", "neutral"].includes(parsed.conclusion)
+        ? parsed.conclusion
+        : "neutral";
+
+    const rating =
+      typeof parsed.rating === "number"
+        ? parsed.rating
+        : Number(parsed.rating) || 2;
+
+    return { comment, conclusion, rating };
   } catch (err) {
     console.error("❌ AI invocation failed:", err);
     return { comment: "AI review failed.", conclusion: "neutral", rating: 2 };
   }
 }
-
-export { chain, safeRunCodeReview };
