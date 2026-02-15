@@ -1,23 +1,24 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import LandingPage from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
+import { Toaster } from "sonner";
 
 function App() {
-  const router = createBrowserRouter([
-    {
-      path: "/",
-      element: <LandingPage />,
-    },
-    {
-      path: "/dashboard",
-      element: <Dashboard />,
-    },
-  ]);
-
   return (
-    <>
-      <RouterProvider router={router} />
-    </>
+    <Router>
+      <Toaster
+        position="top-right"
+        richColors
+        closeButton
+        toastOptions={{
+          duration: 4000,
+        }}
+      />
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+    </Router>
   );
 }
 

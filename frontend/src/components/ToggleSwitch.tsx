@@ -1,21 +1,39 @@
 import { useState } from "react";
+import { API_BASE_URL } from "@/config";
+import { toast } from "sonner";
 
-export default function ToggleSwitch({ repoId }: { repoId: string }) {
-  const [checked, setChecked] = useState(true);
+interface ToggleSwitchProps {
+  repoId: string;
+  initialChecked?: boolean;
+}
 
-  const handleChange = () => {
-    const fetchData = async () => {
-      try {
-        await fetch(`https://vulture-needed-immensely.ngrok-free.app/api/users/data/github/toggleReview/${repoId}`, {
-          method: "POST",
-          credentials: "include",
-        });
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-    fetchData();
+export default function ToggleSwitch({ repoId, initialChecked = true }: ToggleSwitchProps) {
+  const [checked, setChecked] = useState(initialChecked);
+
+  const handleChange = async () => {
+    const previousState = checked;
     setChecked(!checked);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/data/github/toggleReview/${repoId}`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to toggle (${response.status})`);
+      }
+
+      toast.success(
+        !previousState ? "Reviews enabled" : "Reviews disabled",
+        { description: "Auto-review setting updated for this repository." }
+      );
+    } catch (error) {
+      setChecked(previousState); // revert on failure
+      toast.error("Failed to update review setting", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    }
   };
 
   return (

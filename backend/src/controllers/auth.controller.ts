@@ -62,7 +62,7 @@ export const githubCallback = async (req: Request, res: Response) => {
       });
 
       return res.redirect(
-        "https://github.com/apps/reviewhog/installations/new"
+        `${process.env.FRONTEND_URL}/dashboard?uid=${user.id}&new=true`
       );
     }
 
@@ -74,7 +74,7 @@ export const githubCallback = async (req: Request, res: Response) => {
         sameSite: "none",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       })
-      .redirect(`https://review-hog.vercel.app/dashboard?uid=${user.id}`);
+      .redirect(`${process.env.FRONTEND_URL}/dashboard?uid=${user.id}`);
   } catch (err) {
     console.error("Callback error:", err);
     return res.status(500).send("Internal Server Error");

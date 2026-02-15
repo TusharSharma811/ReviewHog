@@ -1,14 +1,51 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Github, Shield, Zap } from "lucide-react";
 import { motion } from "motion/react";
+import { API_BASE_URL } from "@/config";
 
 const LandingPage = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user?.id) {
+            navigate(`/dashboard?uid=${data.user.id}`, { replace: true });
+            return;
+          }
+        }
+      } catch {
+        // Not logged in — stay on landing page
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
 
   const handleGitHubLogin = async () => {
     setIsLoading(true);
-    window.location.href = "https://vulture-needed-immensely.ngrok-free.app/api/auth/github";
+    window.location.href = `${API_BASE_URL}/api/auth/github`;
   };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-black">

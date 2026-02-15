@@ -1,18 +1,36 @@
-import { Plus, GitBranch, CheckCircle, XCircle, Clock } from "lucide-react";
+import { GitBranch, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import ToggleSwitch from "./ToggleSwitch";
+
+interface Review {
+  id: string;
+  createdAt: string;
+}
 
 interface Repository {
   id: string;
   name: string;
-  owner: string;
-  status: "active" | "inactive" | "pending";
-  lastReview: string;
-  reviewCount: number;
-  stars?: number;
-  url?: string;
+  description?: string | null;
+  url: string;
+  language?: string | null;
+  stars: number;
+  forks: number;
+  isReviewOn: boolean;
+  createdAt: string;
+  reviews: Review[];
+}
+
+function formatRelativeDate(dateStr: string): string {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  return `${Math.floor(diffDays / 30)}mo ago`;
 }
 
 export const RepositoryCard = ({
@@ -24,93 +42,71 @@ export const RepositoryCard = ({
     return (
       <Card className="bg-gradient-card border-border shadow-card">
         <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center space-x-2">
-              <GitBranch className="h-5 w-5 text-primary" />
-              <span>Repositories</span>
-            </CardTitle>
-            <Button size="sm" className="bg-primary hover:bg-primary/90">
-              <Plus className="h-4 w-4 mr-1" />
-              Add Repo
-            </Button>
-          </div>
+          <CardTitle className="flex items-center space-x-2">
+            <GitBranch className="h-5 w-5 text-primary" />
+            <span>Repositories</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            No repositories connected.
+            No repositories connected yet. Install the ReviewHog GitHub App to get started.
           </p>
         </CardContent>
       </Card>
     );
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "active":
-        return <CheckCircle className="h-3 w-3 text-success" />;
-      case "inactive":
-        return <XCircle className="h-3 w-3 text-muted-foreground" />;
-      case "pending":
-        return <Clock className="h-3 w-3 text-warning" />;
-      default:
-        return <XCircle className="h-3 w-3 text-muted-foreground" />;
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const variants = {
-      active: "bg-success/10 text-success border-success/20",
-      inactive: "bg-muted/20 text-muted-foreground border-muted",
-      pending: "bg-warning/10 text-warning border-warning/20",
-    };
-
-    return (
-      <Badge
-        variant="outline"
-        className={`${variants[status as keyof typeof variants]} text-xs`}
-      >
-        {status}
-      </Badge>
-    );
-  };
-
   return (
-    <Card className="bg-gradient-card border-border shadow-card max-h-[600px] overflow-y-scroll">
+    <Card className="bg-gradient-card border-border shadow-card max-h-[600px] overflow-y-auto">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center space-x-2">
             <GitBranch className="h-5 w-5 text-primary" />
-            <span>Repositories</span>
+            <span>Repositories ({repositories.length})</span>
           </CardTitle>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-3">
         {repositories.map((repo) => (
-          <a
+          <div
             key={repo.id}
-            href={repo.url}
-            target="_blank"
-            rel="noopener noreferrer"
+            className="flex items-center justify-between p-3 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors"
           >
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors group">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2 mb-1">
-                  {getStatusIcon(repo.stars?.toString() || "")}
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {repo.name}
-                  </p>
-                  {getStatusBadge(repo.status)}
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Last review: {repo.lastReview}</span>
-                  <span>{repo.reviewCount} reviews</span>
-                </div>
+            <div className="flex-1 min-w-0 mr-3">
+              <div className="flex items-center space-x-2 mb-1">
+                <a
+                  href={repo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-foreground truncate hover:text-primary transition-colors flex items-center gap-1"
+                >
+                  {repo.name}
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                </a>
               </div>
-              <ToggleSwitch repoId={repo.id} />
+
+              {repo.description && (
+                <p className="text-xs text-muted-foreground truncate mb-1">
+                  {repo.description}
+                </p>
+              )}
+
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                {repo.reviews.length > 0 ? (
+                  <>
+                    <span>{repo.reviews.length} review{repo.reviews.length !== 1 ? "s" : ""}</span>
+                    <span>·</span>
+                    <span>Last: {formatRelativeDate(repo.reviews[0].createdAt)}</span>
+                  </>
+                ) : (
+                  <span>No reviews yet</span>
+                )}
+              </div>
             </div>
-          </a>
+
+            <ToggleSwitch repoId={repo.id} initialChecked={repo.isReviewOn} />
+          </div>
         ))}
       </CardContent>
     </Card>
