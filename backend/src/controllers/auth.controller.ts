@@ -2,9 +2,9 @@ import { Request, Response } from "express";
 import axios from "axios";
 import prisma from "../db/prismaClient.js";
 import { generateJWTToken } from "../utils/jwtTokenGenerator.js";
+
 export const githubLogin = async (req: Request, res: Response) => {
   try {
- 
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${process.env.GITHUB_REDIRECT_URI}&scope=user:email%20repo`;
     res.redirect(githubAuthUrl);
   } catch (error) {
@@ -15,7 +15,6 @@ export const githubLogin = async (req: Request, res: Response) => {
 
 export const githubCallback = async (req: Request, res: Response) => {
   const { code } = req.query;
-
 
   if (!code) return res.status(400).send("Missing code parameter");
 
@@ -40,7 +39,6 @@ export const githubCallback = async (req: Request, res: Response) => {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-
     let user = await prisma.user.findUnique({
       where: { id: userInfo.data.id.toString() },
     });
@@ -54,20 +52,20 @@ export const githubCallback = async (req: Request, res: Response) => {
         },
       });
 
-       const userToken = generateJWTToken(user);
+      const userToken = generateJWTToken(user);
 
-  
-  res.cookie("token", userToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+      res.cookie("token", userToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
 
       return res.redirect(
         "https://github.com/apps/reviewhog/installations/new"
       );
     }
+
     const userToken = generateJWTToken(user);
     return res
       .cookie("token", userToken, {

@@ -1,10 +1,10 @@
-import { Bot , GitBranchIcon , GitPullRequest} from "lucide-react";
+import { Bot, GitBranchIcon, GitPullRequest } from "lucide-react";
 import { MetricsCard } from "@/components/MetricsCard";
 import { RecentActivity } from "@/components/RecentActivity";
 import { RepositoryCard } from "@/components/RepositoryCard";
 import { useEffect, useState } from "react";
 
-interface metrics {
+interface Metrics {
   totalPRs?: number;
   totalReviews?: number;
   avgReviewTime?: string;
@@ -12,35 +12,34 @@ interface metrics {
 }
 
 const Dashboard = () => {
-
   const uid = new URLSearchParams(window.location.search).get("uid");
-  console.log("User ID:", uid);
-  const [repositories , setRepositories] = useState([]) ;
-  const [metrics , setMetrics] = useState<metrics>({}) ;
-  const [recentActivities , setRecentActivities] = useState([]) ;
+
+  const [repositories, setRepositories] = useState([]);
+  const [metrics, setMetrics] = useState<Metrics>({});
+  const [recentActivities, setRecentActivities] = useState([]);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`https://vulture-needed-immensely.ngrok-free.app/api/users/data/me/insights?uid=${uid}` , {
-          method : "GET" ,
-          credentials : "include"
+        const response = await fetch(`https://vulture-needed-immensely.ngrok-free.app/api/users/data/me/insights?uid=${uid}`, {
+          method: "GET",
+          credentials: "include",
         });
         const data = await response.json();
-        console.log("Fetched Data:", data);
-        
+
         setRepositories(data.repos);
         setMetrics(data.insights);
-        setRecentActivities( data.reviews);
-        console.log(metrics);
-        
+        setRecentActivities(data.reviews);
       } catch (error) {
         console.error("Error fetching user data:", error);
       }
     };
+
     if (uid) {
       fetchData();
     }
   }, [uid]);
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       {/* Header */}
@@ -71,11 +70,11 @@ const Dashboard = () => {
         {/* Overview Section */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-foreground mb-6">Dashboard Overview</h2>
-          
+
           {/* Metrics Grid */}
           <div className="flex flex-col md:flex-row md:space-x-6 space-y-6 md:space-y-0">
-            <MetricsCard  title="Total PR reviewed" value={metrics && metrics.totalPRs?.toString() || '0'} icon={GitPullRequest} description="Number of open pull requests across all repositories." />
-           <MetricsCard  title="Total Repositories" value={repositories && repositories.length.toString() || '0'} icon={GitBranchIcon} description="Total number of repositories owned by the user." />
+            <MetricsCard title="Total PR reviewed" value={metrics && metrics.totalPRs?.toString() || '0'} icon={GitPullRequest} description="Number of open pull requests across all repositories." />
+            <MetricsCard title="Total Repositories" value={repositories && repositories.length.toString() || '0'} icon={GitBranchIcon} description="Total number of repositories owned by the user." />
           </div>
         </div>
 
@@ -88,7 +87,7 @@ const Dashboard = () => {
 
           {/* Repository Status */}
           <div className="space-y-6">
-            <RepositoryCard repositories={repositories}/>
+            <RepositoryCard repositories={repositories} />
           </div>
         </div>
       </main>

@@ -9,8 +9,6 @@ interface MetricsCardProps {
 }
 
 export const MetricsCard = ({ title, value, icon: Icon, description }: MetricsCardProps) => {
-
-
   return (
     <Card className="bg-gradient-card border-border shadow-card hover:shadow-elegant transition-all duration-300 hover:scale-105">
       <CardContent className="p-6">
@@ -18,9 +16,8 @@ export const MetricsCard = ({ title, value, icon: Icon, description }: MetricsCa
           <div className="p-2 bg-muted/20 rounded-lg">
             <Icon className="h-5 w-5 text-primary" />
           </div>
-         
         </div>
-        
+
         <div className="space-y-1">
           <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
           <p className="text-2xl font-bold text-foreground">{value}</p>

@@ -1,4 +1,4 @@
-import {  GitPullRequest, User } from "lucide-react";
+import { GitPullRequest, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -12,14 +12,13 @@ interface Activity {
   timestamp: string;
   status: "success" | "failed" | "pending";
   rating?: number;
-  repo:{
+  repo: {
     name: string;
-  } ;
+  };
 }
 
-
-export const RecentActivity = ({recentActivities} : {recentActivities: Activity[]}) => {
-  if(!recentActivities || recentActivities.length === 0) {
+export const RecentActivity = ({ recentActivities }: { recentActivities: Activity[] }) => {
+  if (!recentActivities || recentActivities.length === 0) {
     return (
       <Card className="bg-gradient-card border-border shadow-card">
         <CardHeader>
@@ -34,12 +33,12 @@ export const RecentActivity = ({recentActivities} : {recentActivities: Activity[
       </Card>
     );
   }
-  
+
   const getStatusBadge = (status: string) => {
     const variants = {
       success: "bg-success/10 text-success border-success/20",
       failed: "bg-destructive/10 text-destructive border-destructive/20",
-      pending: "bg-warning/10 text-warning border-warning/20"
+      pending: "bg-warning/10 text-warning border-warning/20",
     };
 
     return (
@@ -60,7 +59,6 @@ export const RecentActivity = ({recentActivities} : {recentActivities: Activity[
       <CardContent className="space-y-4">
         {recentActivities.map((activity) => (
           <div key={activity.id} className="flex items-start space-x-4 p-4 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors">
-            
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
@@ -73,11 +71,11 @@ export const RecentActivity = ({recentActivities} : {recentActivities: Activity[
                   {activity.timestamp}
                 </span>
               </div>
-              
-              <p className="text-sm  mb-1">
+
+              <p className="text-sm mb-1">
                 {activity.comment.toString().toLowerCase().slice(0, 100)}{activity.comment.length > 10 ? '...' : ''}
               </p>
-              
+
               <div className="flex items-center space-x-1 text-xs text-muted-foreground">
                 <User className="h-3 w-3" />
                 <span>{activity.author}</span>

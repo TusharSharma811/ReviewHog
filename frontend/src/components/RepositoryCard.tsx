@@ -43,6 +43,7 @@ export const RepositoryCard = ({
       </Card>
     );
   }
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "active":
@@ -92,10 +93,7 @@ export const RepositoryCard = ({
             target="_blank"
             rel="noopener noreferrer"
           >
-            <div
-              key={repo.id}
-              className="flex items-center justify-between p-3 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors group"
-            >
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors group">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2 mb-1">
                   {getStatusIcon(repo.stars?.toString() || "")}
@@ -110,7 +108,7 @@ export const RepositoryCard = ({
                   <span>{repo.reviewCount} reviews</span>
                 </div>
               </div>
-             <ToggleSwitch repoId={repo.id} />
+              <ToggleSwitch repoId={repo.id} />
             </div>
           </a>
         ))}

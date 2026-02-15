@@ -1,8 +1,5 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 interface AIResponse {
   comment: string;
@@ -44,7 +41,6 @@ export async function safeRunCodeReview(diff: string, full_file: string): Promis
   try {
     const response = await chain.invoke({ diff, full_file });
 
-    
     let rawOutput = "";
     if (typeof response.content === "string") {
       rawOutput = response.content;
@@ -56,12 +52,9 @@ export async function safeRunCodeReview(diff: string, full_file: string): Promis
       rawOutput = (response as any).text;
     }
 
-  
     const clean = rawOutput.replace(/```json|```/gi, "").trim();
-
     const parsed = JSON.parse(clean);
 
-    
     const comment =
       typeof parsed.comment === "string"
         ? parsed.comment

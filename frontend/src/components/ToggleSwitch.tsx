@@ -1,13 +1,14 @@
 import { useState } from "react";
 
-export default function ToggleSwitch({repoId} : {repoId : string}) {
-  const [checked, setChecked] = useState(true); 
+export default function ToggleSwitch({ repoId }: { repoId: string }) {
+  const [checked, setChecked] = useState(true);
+
   const handleChange = () => {
-     const fetchData = async () => {
+    const fetchData = async () => {
       try {
-        await fetch(`https://vulture-needed-immensely.ngrok-free.app/api/users/data/github/toggleReview/${repoId}` , {
-          method : "POST" ,
-          credentials : "include"
+        await fetch(`https://vulture-needed-immensely.ngrok-free.app/api/users/data/github/toggleReview/${repoId}`, {
+          method: "POST",
+          credentials: "include",
         });
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -15,7 +16,8 @@ export default function ToggleSwitch({repoId} : {repoId : string}) {
     };
     fetchData();
     setChecked(!checked);
-  }
+  };
+
   return (
     <label className="inline-flex items-center cursor-pointer">
       <input
