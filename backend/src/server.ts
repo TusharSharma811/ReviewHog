@@ -11,6 +11,9 @@ import userRoutes from "./routes/user.route.js";
 
 const app = express();
 
+// Trust the first proxy (Render) so express-rate-limit can read the real client IP
+app.set("trust proxy", 1);
+
 // --- Rate Limiting ---
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
