@@ -40,7 +40,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(cors({
-  origin: [process.env.FRONTEND_URL || "http://localhost:5173", "https://review-hog.vercel.app"],
+  origin: [process.env.FRONTEND_URL || "http://localhost:5173", "https://review-hog.vercel.app", "https://reviewhog-me0l.onrender.com"],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 }));
