@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { API_BASE_URL } from "@/config";
 import { toast } from "sonner";
+import { authFetch } from "@/lib/auth";
 
 interface ToggleSwitchProps {
   repoId: string;
@@ -15,9 +16,8 @@ export default function ToggleSwitch({ repoId, initialChecked = true }: ToggleSw
     setChecked(!checked);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/users/data/github/toggleReview/${repoId}`, {
+      const response = await authFetch(`${API_BASE_URL}/api/users/data/github/toggleReview/${repoId}`, {
         method: "POST",
-        credentials: "include",
       });
 
       if (!response.ok) {

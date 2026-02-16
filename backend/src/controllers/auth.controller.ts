@@ -116,18 +116,11 @@ export const githubCallback = async (req: Request, res: Response) => {
       email: user.email,
     });
 
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: (process.env.NODE_ENV === "production" ? "none" : "lax") as "none" | "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    };
-
     const redirectUrl = isNewUser
-      ? `${process.env.FRONTEND_URL}/dashboard?new=true`
-      : `${process.env.FRONTEND_URL}/dashboard`;
+      ? `${process.env.FRONTEND_URL}/dashboard?new=true&token=${userToken}`
+      : `${process.env.FRONTEND_URL}/dashboard?token=${userToken}`;
 
-    return res.cookie("token", userToken, cookieOptions).redirect(redirectUrl);
+    return res.redirect(redirectUrl);
   } catch (err) {
     console.error("Callback error:", err);
     return res.status(500).send("Internal Server Error");

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Github, Shield, Zap } from "lucide-react";
 import { motion } from "motion/react";
 import { API_BASE_URL } from "@/config";
+import { authFetch } from "@/lib/auth";
 
 const LandingPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -12,9 +13,8 @@ const LandingPage = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+        const response = await authFetch(`${API_BASE_URL}/api/auth/me`, {
           method: "GET",
-          credentials: "include",
         });
 
         if (response.ok) {

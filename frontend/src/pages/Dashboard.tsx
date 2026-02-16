@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
 import { toast } from "sonner";
+import { setToken, removeToken, authFetch } from "@/lib/auth";
 
 interface Metrics {
   totalPRs?: number;
@@ -54,9 +55,9 @@ const Dashboard = () => {
         setError(null);
       }
 
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE_URL}/api/users/data/me/insights?page=${page}&limit=10`,
-        { method: "GET", credentials: "include" }
+        { method: "GET" }
       );
 
       if (response.status === 401 || response.status === 403) {
@@ -94,6 +95,16 @@ const Dashboard = () => {
   }, [navigate]);
 
   useEffect(() => {
+    // Extract token from URL (set by OAuth callback redirect)
+    const urlToken = searchParams.get("token");
+    if (urlToken) {
+      setToken(urlToken);
+      // Clean token from URL without triggering re-render
+      const url = new URL(window.location.href);
+      url.searchParams.delete("token");
+      window.history.replaceState({}, "", url.toString());
+    }
+
     fetchData().then((data) => {
       if (isNewUser) {
         toast.success("Welcome to ReviewHog! 🎉", {
@@ -116,14 +127,11 @@ const Dashboard = () => {
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [fetchData, isNewUser]);
+  }, [fetchData, isNewUser, searchParams]);
 
   const handleLogout = async () => {
     try {
-      await fetch(`${API_BASE_URL}/api/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
+      removeToken();
       navigate("/", { replace: true });
     } catch {
       toast.error("Logout failed", { description: "Please try again." });
