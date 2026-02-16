@@ -1,8 +1,9 @@
-import { Bot, GitBranchIcon, GitPullRequest, Loader2, Star, ExternalLink } from "lucide-react";
+import { Bot, GitBranchIcon, GitPullRequest, Loader2, Star, ExternalLink, LogOut, RefreshCw } from "lucide-react";
 import { MetricsCard } from "@/components/MetricsCard";
 import { RecentActivity } from "@/components/RecentActivity";
 import { RepositoryCard } from "@/components/RepositoryCard";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
 import { toast } from "sonner";
 
@@ -12,70 +13,148 @@ interface Metrics {
   avgRating?: number | null;
 }
 
+interface Pagination {
+  page: number;
+  limit: number;
+  totalRepos: number;
+  totalReviews: number;
+  hasMoreRepos: boolean;
+  hasMoreReviews: boolean;
+}
+
 interface UserData {
   name?: string;
+  email?: string;
+  avatarUrl?: string;
   repos: any[];
   reviews: any[];
   insights: Metrics | null;
+  pagination?: Pagination;
 }
 
 const GITHUB_APP_INSTALL_URL = "https://github.com/apps/reviewhog/installations/new";
 
 const Dashboard = () => {
-  const params = new URLSearchParams(window.location.search);
-  const uid = params.get("uid");
-  const isNewUser = params.get("new") === "true";
+  const [searchParams] = useSearchParams();
+  const isNewUser = searchParams.get("new") === "true";
+  const navigate = useNavigate();
 
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [repoPage, setRepoPage] = useState(1);
+  const [reviewPage, setReviewPage] = useState(1);
+  const [isPolling, setIsPolling] = useState(false);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
+  const fetchData = useCallback(async (page = 1, silent = false) => {
+    try {
+      if (!silent) {
         setLoading(true);
         setError(null);
+      }
 
-        const response = await fetch(`${API_BASE_URL}/api/users/data/me/insights?uid=${uid}`, {
-          method: "GET",
-          credentials: "include",
+      const response = await fetch(
+        `${API_BASE_URL}/api/users/data/me/insights?page=${page}&limit=10`,
+        { method: "GET", credentials: "include" }
+      );
+
+      if (response.status === 401 || response.status === 403) {
+        navigate("/", { replace: true });
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch data (${response.status})`);
+      }
+
+      const data: UserData = await response.json();
+      setUserData(data);
+
+      // Stop polling once repos appear
+      if (data.repos.length > 0 && pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+        setIsPolling(false);
+        toast.success("Repositories connected!", {
+          description: `${data.repos.length} repo(s) are now connected to ReviewHog.`,
         });
+      }
 
-        if (!response.ok) {
-          const errorMsg = `Failed to fetch data (${response.status})`;
-          throw new Error(errorMsg);
-        }
-
-        const data = await response.json();
-        setUserData(data);
-
-        if (isNewUser) {
-          toast.success("Welcome to ReviewHog! 🎉", {
-            description: "Install the GitHub App to start getting AI code reviews.",
-            duration: 6000,
-          });
-        }
-      } catch (err) {
+      return data;
+    } catch (err) {
+      if (!silent) {
         const message = err instanceof Error ? err.message : "Something went wrong";
         setError(message);
-        toast.error("Failed to load dashboard", {
-          description: message,
+        toast.error("Failed to load dashboard", { description: message });
+      }
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    fetchData().then((data) => {
+      if (isNewUser) {
+        toast.success("Welcome to ReviewHog! 🎉", {
+          description: "Install the GitHub App to start getting AI code reviews.",
+          duration: 6000,
         });
-      } finally {
-        setLoading(false);
+      }
+
+      // Start polling if no repos
+      if (data && data.repos.length === 0) {
+        setIsPolling(true);
+        pollIntervalRef.current = setInterval(() => {
+          fetchData(1, true);
+        }, 10000);
+      }
+    });
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
       }
     };
+  }, [fetchData, isNewUser]);
 
-    if (uid) {
-      fetchData();
-    } else {
-      setLoading(false);
-      setError("No user ID provided. Please log in again.");
-      toast.error("Missing user ID", {
-        description: "Redirecting you to login...",
+  const handleLogout = async () => {
+    try {
+      await fetch(`${API_BASE_URL}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+      navigate("/", { replace: true });
+    } catch {
+      toast.error("Logout failed", { description: "Please try again." });
+    }
+  };
+
+  const loadMoreRepos = async () => {
+    const nextPage = repoPage + 1;
+    setRepoPage(nextPage);
+    const data = await fetchData(nextPage, true);
+    if (data && userData) {
+      setUserData({
+        ...data,
+        repos: [...userData.repos, ...data.repos],
+        reviews: userData.reviews,
       });
     }
-  }, [uid, isNewUser]);
+  };
+
+  const loadMoreReviews = async () => {
+    const nextPage = reviewPage + 1;
+    setReviewPage(nextPage);
+    const data = await fetchData(nextPage, true);
+    if (data && userData) {
+      setUserData({
+        ...data,
+        repos: userData.repos,
+        reviews: [...userData.reviews, ...data.reviews],
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -108,12 +187,13 @@ const Dashboard = () => {
   const repositories = userData?.repos ?? [];
   const recentActivities = userData?.reviews ?? [];
   const metrics = userData?.insights ?? {};
+  const pagination = userData?.pagination;
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-6 py-4">
+        <div className="container mx-auto px-4 md:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-gradient-primary rounded-lg">
@@ -126,18 +206,25 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-1 text-sm text-success">
                 <div className="w-2 h-2 bg-success rounded-full animate-pulse" />
-                <span>Active</span>
+                <span className="hidden sm:inline">Active</span>
               </div>
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center gap-2 rounded-md text-sm font-medium border border-border bg-background hover:bg-muted h-9 px-3 transition-colors cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">
+      <main className="container mx-auto px-4 md:px-6 py-8">
         {/* Install GitHub App Banner */}
         {repositories.length === 0 && (
           <div className="mb-8 p-6 rounded-lg border border-primary/20 bg-primary/5">
@@ -149,6 +236,12 @@ const Dashboard = () => {
                 <p className="text-sm text-muted-foreground">
                   Install the ReviewHog GitHub App to connect your repositories and start getting AI-powered code reviews on every pull request.
                 </p>
+                {isPolling && (
+                  <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    Checking for new repositories...
+                  </div>
+                )}
               </div>
               <a
                 href={GITHUB_APP_INSTALL_URL}
@@ -168,7 +261,7 @@ const Dashboard = () => {
           <h2 className="text-2xl font-bold text-foreground mb-6">Dashboard Overview</h2>
 
           {/* Metrics Grid */}
-          <div className="flex flex-col md:flex-row md:space-x-6 space-y-6 md:space-y-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             <MetricsCard
               title="Total PRs Reviewed"
               value={String(metrics?.totalPRs ?? 0)}
@@ -177,7 +270,7 @@ const Dashboard = () => {
             />
             <MetricsCard
               title="Connected Repos"
-              value={String(repositories.length)}
+              value={String(pagination?.totalRepos ?? repositories.length)}
               icon={GitBranchIcon}
               description="Repositories connected to ReviewHog."
             />
@@ -194,12 +287,20 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Recent Activity */}
           <div className="lg:col-span-2">
-            <RecentActivity recentActivities={recentActivities} />
+            <RecentActivity
+              recentActivities={recentActivities}
+              hasMore={pagination?.hasMoreReviews ?? false}
+              onLoadMore={loadMoreReviews}
+            />
           </div>
 
           {/* Repository Status */}
           <div className="space-y-6">
-            <RepositoryCard repositories={repositories} />
+            <RepositoryCard
+              repositories={repositories}
+              hasMore={pagination?.hasMoreRepos ?? false}
+              onLoadMore={loadMoreRepos}
+            />
           </div>
         </div>
       </main>

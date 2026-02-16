@@ -5,7 +5,7 @@ import { repoHandlerWebhook } from "../webhook/repoHandler.webhook.js";
 
 export const githubWebhook = async (req: Request, res: Response) => {
   try {
-    const event = req.headers["x-github-event"];
+    const event = req.headers["x-github-event"] as string | undefined;
     const payload = req.body;
 
     if (event === "installation") {
@@ -14,9 +14,11 @@ export const githubWebhook = async (req: Request, res: Response) => {
       await repoHandlerWebhook(req, res, payload.action, payload);
     } else if (event === "pull_request") {
       await pullRequestWebhook(req, res, payload.action, payload);
+    } else {
+      res.status(200).send("Event not handled");
     }
   } catch (error) {
-    console.log("Error in githubWebhook", error);
+    console.error("Error in githubWebhook:", error);
     res.sendStatus(500);
   }
 };

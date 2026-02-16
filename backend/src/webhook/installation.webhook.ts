@@ -1,15 +1,36 @@
 import { Request, Response } from "express";
 import prisma from "../db/prismaClient.js";
 
-export const installationWebhook = async (req: Request, res: Response, action: string, payload: any) => {
+interface InstallationPayload {
+  action: string;
+  installation: {
+    account: {
+      id: number;
+      html_url: string;
+    };
+  };
+  repositories: Array<{
+    id: number;
+    name: string;
+    full_name: string;
+    description: string | null;
+  }>;
+}
+
+export const installationWebhook = async (
+  _req: Request,
+  res: Response,
+  action: string,
+  payload: InstallationPayload
+) => {
   try {
     switch (action) {
       case "created":
         await prisma.repo.createMany({
-          data: payload.repositories.map((repo: any) => ({
+          data: payload.repositories.map((repo) => ({
             id: repo.id.toString(),
             name: repo.full_name,
-            description: repo.description ? repo.description : "",
+            description: repo.description ?? "",
             url: payload.installation.account.html_url + `/${repo.name}`,
             ownerId: payload.installation.account.id.toString(),
             isReviewOn: true,

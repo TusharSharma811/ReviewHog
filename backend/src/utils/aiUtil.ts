@@ -7,6 +7,11 @@ interface AIResponse {
   rating: number;
 }
 
+interface ContentPart {
+  text?: string;
+  type?: string;
+}
+
 const model = new ChatGoogleGenerativeAI({
   model: "gemini-2.5-flash",
   temperature: 0.7,
@@ -46,10 +51,8 @@ export async function safeRunCodeReview(diff: string, full_file: string): Promis
       rawOutput = response.content;
     } else if (Array.isArray(response.content)) {
       rawOutput = response.content
-        .map((p: any) => (typeof p?.text === "string" ? p.text : ""))
+        .map((p: ContentPart) => (typeof p?.text === "string" ? p.text : ""))
         .join("\n");
-    } else if ((response as any)?.text) {
-      rawOutput = (response as any).text;
     }
 
     const clean = rawOutput.replace(/```json|```/gi, "").trim();

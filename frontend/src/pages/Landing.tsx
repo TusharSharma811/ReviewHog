@@ -20,7 +20,7 @@ const LandingPage = () => {
         if (response.ok) {
           const data = await response.json();
           if (data.user?.id) {
-            navigate(`/dashboard?uid=${data.user.id}`, { replace: true });
+            navigate("/dashboard", { replace: true });
             return;
           }
         }
@@ -53,23 +53,30 @@ const LandingPage = () => {
         className="absolute inset-0 bg-[radial-gradient(125%_125%_at_50%_20%,#000_40%,hsl(212,100%,48%)_100%)] transition-all"
       />
 
-      <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className="text-9xl absolute top-10 font-heading">ReviewHog</motion.h1>
+      <motion.h1
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="text-4xl md:text-7xl lg:text-9xl absolute top-6 md:top-10 font-heading px-4 text-center w-full"
+      >
+        ReviewHog
+      </motion.h1>
 
       <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center relative z-10">
         {/* Hero Section */}
-        <div className="space-y-6">
+        <div className="space-y-6 text-center lg:text-left">
           <div className="space-y-4">
-            <h2 className="text-4xl font-bold leading-tight">
+            <h2 className="text-2xl md:text-4xl font-bold leading-tight">
               Intelligent Code Reviews,
               <span className="text-primary block">Powered by AI</span>
             </h2>
-            <p className="text-xl text-muted-foreground">
+            <p className="text-base md:text-xl text-muted-foreground max-w-lg mx-auto lg:mx-0">
               Get instant, thorough code reviews on every pull request.
               Catch bugs, improve code quality, and learn best practices.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="flex flex-wrap justify-center lg:justify-start gap-4 md:gap-6">
             <div className="flex items-center space-x-3">
               <Zap className="h-5 w-5 text-primary" />
               <span className="text-sm">Instant Reviews</span>
