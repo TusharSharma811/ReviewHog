@@ -1,5 +1,6 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { z } from "zod";
 
 interface AIResponse {
   comment: string;
@@ -7,16 +8,19 @@ interface AIResponse {
   rating: number;
 }
 
-interface ContentPart {
-  text?: string;
-  type?: string;
-}
-
 const model = new ChatGoogleGenerativeAI({
   model: "gemini-2.5-flash",
   temperature: 0.7,
   apiKey: process.env.GEMINI_API_KEY!,
 });
+
+const reviewSchema = z.object({
+  comment: z.string().describe("Detailed feedback about this specific file"),
+  conclusion: z.enum(["success", "failure", "neutral"]).describe("Code review conclusion"),
+  rating: z.number().describe("Rating from 1 to 5"),
+});
+
+const structuredModel = model.withStructuredOutput(reviewSchema);
 
 const prompt = ChatPromptTemplate.fromTemplate(`
 You are a Senior Software Engineer performing a professional code review **only for the file shown below**.
@@ -26,13 +30,6 @@ Ignore any unrelated context or previously seen code from other languages or fil
 
 If the change is trivial (like adding print/log statements), just respond briefly and objectively.
 
-You must respond ONLY in valid JSON with the following fields:
-{{
-  "comment": "Detailed feedback about this specific file",
-  "conclusion": "success" | "failure" | "neutral",
-  "rating": 1–5
-}}
-
 Here is the Git diff for this file:
 {diff}
 
@@ -40,38 +37,26 @@ Here is the full file content for reference:
 {full_file}
 `);
 
-const chain = prompt.pipe(model);
+const chain = prompt.pipe(structuredModel);
 
 export async function safeRunCodeReview(diff: string, full_file: string): Promise<AIResponse> {
   try {
     const response = await chain.invoke({ diff, full_file });
 
-    let rawOutput = "";
-    if (typeof response.content === "string") {
-      rawOutput = response.content;
-    } else if (Array.isArray(response.content)) {
-      rawOutput = response.content
-        .map((p: ContentPart) => (typeof p?.text === "string" ? p.text : ""))
-        .join("\n");
-    }
-
-    const clean = rawOutput.replace(/```json|```/gi, "").trim();
-    const parsed = JSON.parse(clean);
-
     const comment =
-      typeof parsed.comment === "string"
-        ? parsed.comment
+      typeof response?.comment === "string"
+        ? response.comment
         : "AI did not provide a comment.";
 
     const conclusion =
-      ["success", "failure", "neutral"].includes(parsed.conclusion)
-        ? parsed.conclusion
+      ["success", "failure", "neutral"].includes(response?.conclusion || "")
+        ? response.conclusion as "success" | "failure" | "neutral"
         : "neutral";
 
     const rating =
-      typeof parsed.rating === "number"
-        ? parsed.rating
-        : Number(parsed.rating) || 2;
+      typeof response?.rating === "number"
+        ? response.rating
+        : Number(response?.rating) || 2;
 
     return { comment, conclusion, rating };
   } catch (err) {
