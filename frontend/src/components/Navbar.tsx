@@ -1,4 +1,4 @@
-import { MessageSquareCode, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
 import LOGO from "../assets/Gemini_Generated_Image_azcybkazcybkazcy-removebg-preview.png"
 
