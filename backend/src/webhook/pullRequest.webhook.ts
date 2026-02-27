@@ -171,6 +171,8 @@ export const pullRequestWebhook = async (
 
     console.log(`📝 Reviewing ${reviewableFiles.length}/${prFilesRes.data.length} files`);
 
+    let finalConclusion: "success" | "failure" | "neutral" = "success";
+
     for (const file of reviewableFiles) {
 
       const tempCommentRes = await axios.post<CommentResponse>(
@@ -209,6 +211,10 @@ export const pullRequestWebhook = async (
         { headers }
       );
 
+      if (aiResponse.conclusion === "failure") {
+        finalConclusion = "failure";
+      }
+
       await prisma.review.create({
         data: {
           reviewId: makeReviewId(payload.pull_request.id.toString(), file.filename),
@@ -226,7 +232,7 @@ export const pullRequestWebhook = async (
         name: "AI Code Review",
         head_sha: payload.pull_request.head.sha,
         status: "completed",
-        conclusion: "success",
+        conclusion: finalConclusion,
       },
       { headers }
     );
