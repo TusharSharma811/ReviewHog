@@ -1,19 +1,15 @@
-import { GitBranchIcon, GitPullRequest, Loader2, Star, ExternalLink, LogOut, RefreshCw } from "lucide-react";
-import { MetricsCard } from "@/components/MetricsCard";
+import { Loader2, ExternalLink, LogOut, RefreshCw } from "lucide-react";
+import { MetricsSection } from "@/components/MetricsSection";
+import { GitHubActivitySection } from "@/components/GitHubActivity";
 import { RecentActivity } from "@/components/RecentActivity";
 import { RepositoryCard } from "@/components/RepositoryCard";
+import { AddRepoModal } from "@/components/AddRepoModal";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
 import { toast } from "sonner";
 import { setToken, removeToken, authFetch } from "@/lib/auth";
 import LOGO from "../assets/Gemini_Generated_Image_azcybkazcybkazcy-removebg-preview.png";
-
-interface Metrics {
-  totalPRs?: number;
-  totalReviews?: number;
-  avgRating?: number | null;
-}
 
 interface Pagination {
   page: number;
@@ -30,8 +26,34 @@ interface UserData {
   avatarUrl?: string;
   repos: any[];
   reviews: any[];
-  insights: Metrics | null;
+  insights: any;
   pagination?: Pagination;
+}
+
+interface MetricsData {
+  overview: {
+    totalPRs: number;
+    totalReviews: number;
+    avgRating: number | null;
+    issuesFound: number;
+    cleanPasses: number;
+    lastReviewAt: string | null;
+    qualityScore: number | null;
+  };
+  severityBreakdown: {
+    issues: number;
+    neutral: number;
+    clean: number;
+  };
+  dailyActivity: { date: string; count: number; label: string }[];
+  topRepos: { id: string; name: string; reviewCount: number }[];
+  recentTimeline: {
+    id: string;
+    repoName: string;
+    rating: number | null;
+    comment: string;
+    createdAt: string;
+  }[];
 }
 
 const GITHUB_APP_INSTALL_URL = "https://github.com/apps/reviewhog/installations/new";
@@ -42,11 +64,16 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [metricsData, setMetricsData] = useState<MetricsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [metricsLoading, setMetricsLoading] = useState(true);
+  const [activityData, setActivityData] = useState<any>(null);
+  const [activityLoading, setActivityLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [repoPage, setRepoPage] = useState(1);
   const [reviewPage, setReviewPage] = useState(1);
   const [isPolling, setIsPolling] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchData = useCallback(async (page = 1, silent = false) => {
@@ -95,12 +122,49 @@ const Dashboard = () => {
     }
   }, [navigate]);
 
+  const fetchMetrics = useCallback(async () => {
+    try {
+      setMetricsLoading(true);
+      const response = await authFetch(
+        `${API_BASE_URL}/api/users/data/me/metrics`,
+        { method: "GET" }
+      );
+
+      if (response.ok) {
+        const data: MetricsData = await response.json();
+        setMetricsData(data);
+      }
+    } catch {
+      // Metrics are non-critical; don't block dashboard
+    } finally {
+      setMetricsLoading(false);
+    }
+  }, []);
+
+  const fetchActivity = useCallback(async () => {
+    try {
+      setActivityLoading(true);
+      const response = await authFetch(
+        `${API_BASE_URL}/api/users/data/me/github-activity`,
+        { method: "GET" }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setActivityData(data);
+      }
+    } catch {
+      // Activity is non-critical
+    } finally {
+      setActivityLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     // Extract token from URL (set by OAuth callback redirect)
     const urlToken = searchParams.get("token");
     if (urlToken) {
       setToken(urlToken);
-      // Clean token from URL without triggering re-render
       const url = new URL(window.location.href);
       url.searchParams.delete("token");
       window.history.replaceState({}, "", url.toString());
@@ -114,7 +178,6 @@ const Dashboard = () => {
         });
       }
 
-      // Start polling if no repos
       if (data && data.repos.length === 0) {
         setIsPolling(true);
         pollIntervalRef.current = setInterval(() => {
@@ -123,12 +186,15 @@ const Dashboard = () => {
       }
     });
 
+    fetchMetrics();
+    fetchActivity();
+
     return () => {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [fetchData, isNewUser, searchParams]);
+  }, [fetchData, fetchMetrics, fetchActivity, isNewUser, searchParams]);
 
   const handleLogout = async () => {
     try {
@@ -136,6 +202,52 @@ const Dashboard = () => {
       navigate("/", { replace: true });
     } catch {
       toast.error("Logout failed", { description: "Please try again." });
+    }
+  };
+
+  const handleAddRepo = async (name: string, description: string) => {
+    const response = await authFetch(`${API_BASE_URL}/api/users/data/repos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, description }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.message || `Failed to add repository (${response.status})`);
+    }
+
+    toast.success("Repository added!", {
+      description: `${name} has been connected to ReviewHog.`,
+    });
+
+    // Refresh data
+    await fetchData(1, true);
+    await fetchMetrics();
+  };
+
+  const handleRemoveRepo = async (repoId: string, repoName: string) => {
+    try {
+      const response = await authFetch(`${API_BASE_URL}/api/users/data/repos/${repoId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to remove repository");
+      }
+
+      const displayName = repoName.includes("/") ? repoName.split("/")[1] : repoName;
+      toast.success("Repository removed", {
+        description: `${displayName} has been disconnected from ReviewHog.`,
+      });
+
+      // Refresh data
+      await fetchData(1, true);
+      await fetchMetrics();
+    } catch (err) {
+      toast.error("Failed to remove repository", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
     }
   };
 
@@ -195,7 +307,6 @@ const Dashboard = () => {
 
   const repositories = userData?.repos ?? [];
   const recentActivities = userData?.reviews ?? [];
-  const metrics = userData?.insights ?? {};
   const pagination = userData?.pagination;
 
   return (
@@ -263,31 +374,16 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Overview Section */}
+        {/* Metrics Section */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-foreground mb-6">Dashboard Overview</h2>
+          <MetricsSection metrics={metricsData} loading={metricsLoading} />
+        </div>
 
-          {/* Metrics Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            <MetricsCard
-              title="Total PRs Reviewed"
-              value={String(metrics?.totalPRs ?? 0)}
-              icon={GitPullRequest}
-              description="Pull requests reviewed by AI across all repositories."
-            />
-            <MetricsCard
-              title="Connected Repos"
-              value={String(pagination?.totalRepos ?? repositories.length)}
-              icon={GitBranchIcon}
-              description="Repositories connected to ReviewHog."
-            />
-            <MetricsCard
-              title="Avg. Rating"
-              value={metrics?.avgRating != null ? metrics.avgRating.toFixed(1) : "—"}
-              icon={Star}
-              description="Average code quality rating across reviews."
-            />
-          </div>
+        {/* GitHub Activity Section */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-foreground mb-6">GitHub Activity</h2>
+          <GitHubActivitySection data={activityData} loading={activityLoading} />
         </div>
 
         {/* Content Grid */}
@@ -307,10 +403,19 @@ const Dashboard = () => {
               repositories={repositories}
               hasMore={pagination?.hasMoreRepos ?? false}
               onLoadMore={loadMoreRepos}
+              onAddRepo={() => setShowAddModal(true)}
+              onRemoveRepo={handleRemoveRepo}
             />
           </div>
         </div>
       </main>
+
+      {/* Add Repo Modal */}
+      <AddRepoModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAdd={handleAddRepo}
+      />
     </div>
   );
 };

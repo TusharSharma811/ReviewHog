@@ -13,15 +13,16 @@ datasource db {
 }
 
 model User {
-  id         String     @id @default(cuid())
-  email      String     
-  name       String?
-  avatarUrl  String? // optional GitHub/Gravatar avatar
-  repos      Repo[]
-  reviews    Review[]   // reviews made by the user
-  insights   Insight?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id          String     @id @default(cuid())
+  email       String
+  name        String?
+  avatarUrl   String?
+  githubToken String?    // GitHub OAuth access token for fetching activity
+  repos       Repo[]
+  reviews     Review[]
+  insights    Insight?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model Repo {
@@ -32,7 +33,7 @@ model Repo {
   language    String?     
   stars       Int        @default(0)
   forks       Int        @default(0)
-  owner       User       @relation(fields: [ownerId], references: [id])
+  owner       User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId     String
   reviews     Review[]   
   isReviewOn Boolean    @default(false) 
@@ -41,22 +42,25 @@ model Repo {
 }
 
 model Insight {
-  id           String    @id @default(cuid())
-  owner        User      @relation(fields: [ownerId], references: [id])
-  ownerId      String    @unique
-  totalPRs     Int       @default(0)
-  totalReviews Int       @default(0)
-  avgRating    Float?    
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  owner          User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId        String    @unique
+  totalPRs       Int       @default(0)
+  totalReviews   Int       @default(0)
+  avgRating      Float?
+  issuesFound    Int       @default(0)
+  cleanPasses    Int       @default(0)
+  lastReviewAt   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model Review {
   id          String    @id @default(cuid())
-  owner       User      @relation(fields: [ownerId], references: [id])
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId     String
   reviewId   String    @unique
-  repo        Repo      @relation(fields: [repoId], references: [id])
+  repo        Repo      @relation(fields: [repoId], references: [id], onDelete: Cascade)
   repoId      String
   rating      Int?      
   comment     String?   

@@ -1,13 +1,8 @@
 import jwt, { JwtPayload } from "jsonwebtoken";
-import { Response, Request, NextFunction } from "express";
+import { Response, NextFunction } from "express";
+import { RequestWithUser, AuthPayload } from "../types/auth.js";
 
-export interface AuthPayload extends JwtPayload {
-  id: string;
-  name: string;
-  email: string;
-}
-
-export type RequestWithUser = Request & { user?: AuthPayload };
+export type { AuthPayload, RequestWithUser };
 
 const verifyJWT = (req: RequestWithUser, res: Response, next: NextFunction) => {
   const token = req.cookies.token || req.headers.authorization?.split(" ")[1];

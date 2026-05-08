@@ -4,6 +4,7 @@ import crypto from "crypto";
 import prisma from "../db/prismaClient.js";
 import { getGithubToken } from "../utils/getGithubToken.js";
 import { safeRunCodeReview } from "../utils/aiUtil.js";
+import { z } from "zod";
 
 // Files that should never be reviewed — they produce noisy, unhelpful feedback
 const SKIP_EXTENSIONS = new Set([
@@ -54,22 +55,30 @@ function makeReviewId(prId: string, filename: string): string {
   return `${prId}-${hash}`;
 }
 
-interface PullRequestPayload {
-  action: string;
-  pull_request: {
-    id: string;
-    head: { sha: string };
-    comments_url: string;
-    diff_url: string;
-    url: string;
-  };
-  repository: {
-    id: number;
-    owner: { login: string; id: string };
-    name: string;
-  };
-  installation: { id: string };
-}
+// Zod validation for the webhook payload
+const pullRequestPayloadSchema = z.object({
+  action: z.string(),
+  pull_request: z.object({
+    id: z.union([z.string(), z.number()]).transform(String),
+    head: z.object({ sha: z.string() }),
+    comments_url: z.string().url(),
+    diff_url: z.string().url(),
+    url: z.string().url(),
+  }),
+  repository: z.object({
+    id: z.number(),
+    owner: z.object({
+      login: z.string(),
+      id: z.union([z.string(), z.number()]).transform(String),
+    }),
+    name: z.string(),
+  }),
+  installation: z.object({
+    id: z.union([z.string(), z.number()]).transform(String),
+  }),
+});
+
+type PullRequestPayload = z.infer<typeof pullRequestPayloadSchema>;
 
 interface AIResponse {
   comment: string;
@@ -92,38 +101,22 @@ interface CommentResponse {
   id: number;
 }
 
-export const pullRequestWebhook = async (
-  _req: Request,
-  res: Response,
-  action: string,
-  payload: PullRequestPayload
-) => {
+/**
+ * Compute the average rating across all reviews for a given owner.
+ */
+async function computeAvgRating(ownerId: string): Promise<number | null> {
+  const result = await prisma.review.aggregate({
+    where: { ownerId, rating: { not: null } },
+    _avg: { rating: true },
+  });
+  return result._avg.rating;
+}
+
+/**
+ * Process the PR review in the background (after webhook has responded 200).
+ */
+async function processPullRequest(payload: PullRequestPayload): Promise<void> {
   try {
-    const repoInfo = await prisma.repo.findUnique({
-      where: { id: payload.repository.id.toString() },
-    });
-
-    if (!repoInfo || !repoInfo.isReviewOn) {
-      return res.status(200).send("Review disabled for this repo");
-    }
-
-    if (action !== "opened") {
-      return res.status(200).send("Action ignored");
-    }
-
-    // Deduplication: check if this PR was already reviewed
-    const existingReview = await prisma.review.findFirst({
-      where: {
-        reviewId: { startsWith: payload.pull_request.id.toString() },
-        repoId: payload.repository.id.toString(),
-      },
-    });
-
-    if (existingReview) {
-      console.log(`⏭️ PR ${payload.pull_request.id} already reviewed, skipping (webhook retry)`);
-      return res.status(200).send("Already reviewed");
-    }
-
     const token = await getGithubToken(payload.installation.id);
     const headers = {
       Authorization: `Bearer ${token}`,
@@ -166,12 +159,14 @@ export const pullRequestWebhook = async (
         },
         { headers }
       );
-      return res.status(200).send("No reviewable files");
+      return;
     }
 
     console.log(`📝 Reviewing ${reviewableFiles.length}/${prFilesRes.data.length} files`);
 
     let finalConclusion: "success" | "failure" | "neutral" = "success";
+    let issuesInPR = 0;
+    let passesInPR = 0;
 
     for (const file of reviewableFiles) {
 
@@ -213,6 +208,9 @@ export const pullRequestWebhook = async (
 
       if (aiResponse.conclusion === "failure") {
         finalConclusion = "failure";
+        issuesInPR++;
+      } else if (aiResponse.conclusion === "success") {
+        passesInPR++;
       }
 
       await prisma.review.create({
@@ -237,20 +235,87 @@ export const pullRequestWebhook = async (
       { headers }
     );
 
+    // Compute updated avgRating from all reviews
+    const avgRating = await computeAvgRating(payload.repository.owner.id.toString());
+
     await prisma.insight.upsert({
       where: { ownerId: payload.repository.owner.id.toString() },
       update: {
-        totalReviews: { increment: 1 },
+        totalReviews: { increment: reviewableFiles.length },
         totalPRs: { increment: 1 },
+        avgRating,
+        issuesFound: { increment: issuesInPR },
+        cleanPasses: { increment: passesInPR },
+        lastReviewAt: new Date(),
       },
       create: {
         ownerId: payload.repository.owner.id.toString(),
-        totalReviews: 1,
+        totalReviews: reviewableFiles.length,
         totalPRs: 1,
+        avgRating,
+        issuesFound: issuesInPR,
+        cleanPasses: passesInPR,
+        lastReviewAt: new Date(),
       },
     });
 
-    res.status(200).send("✅ Webhook processed successfully");
+    console.log(`✅ PR ${payload.pull_request.id} reviewed successfully`);
+  } catch (err) {
+    console.error("❌ Error processing PR review:", err);
+  }
+}
+
+export const pullRequestWebhook = async (
+  _req: Request,
+  res: Response,
+  action: string,
+  payload: unknown
+) => {
+  try {
+    // FIX #14: Validate webhook payload with Zod
+    const parsed = pullRequestPayloadSchema.safeParse(payload);
+    if (!parsed.success) {
+      console.error("Invalid PR webhook payload:", parsed.error.issues);
+      return res.status(400).send("Invalid payload");
+    }
+
+    const validPayload = parsed.data;
+
+    const repoInfo = await prisma.repo.findUnique({
+      where: { id: validPayload.repository.id.toString() },
+    });
+
+    if (!repoInfo || !repoInfo.isReviewOn) {
+      return res.status(200).send("Review disabled for this repo");
+    }
+
+    if (action !== "opened") {
+      return res.status(200).send("Action ignored");
+    }
+
+    // Deduplication: check if this PR was already reviewed
+    const existingReview = await prisma.review.findFirst({
+      where: {
+        reviewId: { startsWith: validPayload.pull_request.id.toString() },
+        repoId: validPayload.repository.id.toString(),
+      },
+    });
+
+    if (existingReview) {
+      console.log(`⏭️ PR ${validPayload.pull_request.id} already reviewed, skipping (webhook retry)`);
+      return res.status(200).send("Already reviewed");
+    }
+
+    // FIX #5: Respond immediately, process in background
+    // This prevents GitHub from retrying the webhook due to timeout
+    res.status(200).send("Processing");
+
+    // Run the actual review work asynchronously
+    setImmediate(() => {
+      processPullRequest(validPayload).catch((err) => {
+        console.error("❌ Background PR processing failed:", err);
+      });
+    });
   } catch (err) {
     console.error("❌ Error processing PR webhook:", err);
     res.status(500).send("Internal Server Error");

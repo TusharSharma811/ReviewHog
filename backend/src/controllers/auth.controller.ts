@@ -96,16 +96,18 @@ export const githubCallback = async (req: Request, res: Response) => {
           email,
           name: userInfo.data.login,
           avatarUrl: userInfo.data.avatar_url,
+          githubToken: accessToken,
         },
       });
     } else {
-      // Update email and avatar on every login
-      await prisma.user.update({
+      // Update email, avatar, and token on every login
+      user = await prisma.user.update({
         where: { id: githubId },
         data: {
           email: email || user.email,
           name: userInfo.data.login,
           avatarUrl: userInfo.data.avatar_url,
+          githubToken: accessToken,
         },
       });
     }

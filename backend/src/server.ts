@@ -10,6 +10,7 @@ import authRoutes from "./routes/auth.route.js";
 import userRoutes from "./routes/user.route.js";
 
 const app = express();
+const PORT = parseInt(process.env.PORT || "3000", 10);
 
 app.set("trust proxy", 1);
 
@@ -30,6 +31,26 @@ const authLimiter = rateLimit({
   message: { message: "Too many auth requests, please try again later." },
 });
 
+// --- CORS Origins ---
+function getCorsOrigins(): (string | RegExp)[] {
+  const origins: string[] = [];
+
+  if (process.env.FRONTEND_URL) {
+    origins.push(process.env.FRONTEND_URL);
+  }
+
+  if (process.env.CORS_ORIGINS) {
+    origins.push(...process.env.CORS_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean));
+  }
+
+  // Fallback for local dev
+  if (origins.length === 0) {
+    origins.push("http://localhost:5173");
+  }
+
+  return origins;
+}
+
 // --- Middleware ---
 // Capture raw body for webhook signature verification
 app.use("/api/github", express.json({
@@ -42,7 +63,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(cors({
-  origin: [process.env.FRONTEND_URL || "http://localhost:5173", "https://review-hog.vercel.app", "https://reviewhog-me0l.onrender.com"],
+  origin: getCorsOrigins(),
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 }));
@@ -63,6 +84,6 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ message: "Internal server error" });
 });
 
-app.listen(3000, () => {
-  console.log("Server started successfully on port 3000");
+app.listen(PORT, () => {
+  console.log(`Server started successfully on port ${PORT}`);
 });

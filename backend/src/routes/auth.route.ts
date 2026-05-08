@@ -1,8 +1,7 @@
 import { Router, Request, Response } from "express";
 import { githubCallback, githubLogin } from "../controllers/auth.controller.js";
 import verifyJWT from "../middleware/verifyJWT.js";
-
-type RequestWithUser = Request & { user?: { id: string; name: string; email: string } };
+import { RequestWithUser } from "../types/auth.js";
 
 const router = Router();
 
