@@ -57,7 +57,7 @@ export const installationWebhook = async (
           where: {
             id: validPayload.installation.account.id.toString(),
           },
-        }).catch((err) => {
+        }).catch((err: Error) => {
           // User might not exist (e.g., never logged in via OAuth)
           console.warn("User delete failed (may not exist):", err.message);
         });
