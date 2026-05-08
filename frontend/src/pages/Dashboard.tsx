@@ -8,7 +8,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
 import { toast } from "sonner";
-import { setToken, removeToken, authFetch } from "@/lib/auth";
+import { setToken, removeToken, getToken, authFetch } from "@/lib/auth";
 import LOGO from "../assets/Gemini_Generated_Image_azcybkazcybkazcy-removebg-preview.png";
 
 interface Pagination {
@@ -167,7 +167,14 @@ const Dashboard = () => {
       setToken(urlToken);
       const url = new URL(window.location.href);
       url.searchParams.delete("token");
+      url.searchParams.delete("new");
       window.history.replaceState({}, "", url.toString());
+    }
+
+    // If no token exists at all, redirect to login
+    if (!urlToken && !getToken()) {
+      window.location.href = "/";
+      return;
     }
 
     fetchData().then((data) => {
@@ -196,13 +203,18 @@ const Dashboard = () => {
     };
   }, [fetchData, fetchMetrics, fetchActivity, isNewUser, searchParams]);
 
-  const handleLogout = async () => {
-    try {
-      removeToken();
-      navigate("/", { replace: true });
-    } catch {
-      toast.error("Logout failed", { description: "Please try again." });
+  const handleLogout = () => {
+    // Stop any active polling
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
     }
+
+    // Clear token
+    removeToken();
+
+    // Hard redirect to clear all React state (prevents stale auth)
+    window.location.href = "/";
   };
 
   const handleAddRepo = async (name: string, description: string) => {
