@@ -62,7 +62,7 @@ function qualityBgColor(score: number | null): string {
 }
 
 export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
-  if (loading || !metrics) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -74,6 +74,17 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
             </div>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (!metrics) {
+    return (
+      <div className="rounded-2xl border border-border bg-white p-8 text-center">
+        <TrendingUp className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+        <p className="text-sm text-muted-foreground">
+          No metrics data available yet. Reviews will appear here once PRs are analyzed.
+        </p>
       </div>
     );
   }
