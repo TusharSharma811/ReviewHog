@@ -7,7 +7,7 @@ COPY package*.json ./
 RUN npm install
 
 COPY prisma ./prisma
-RUN npx prisma generate
+RUN npx prisma@6.13.0 generate
 
 COPY . .
 RUN npm run build
@@ -22,7 +22,7 @@ COPY package*.json ./
 RUN npm install --omit=dev
 
 COPY prisma ./prisma
-RUN npx prisma generate
+RUN npx prisma@6.13.0 generate
 
 COPY --from=builder /app/dist ./dist
 
