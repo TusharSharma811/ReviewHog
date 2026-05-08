@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Github,
@@ -8,6 +8,8 @@ import {
   MessageSquareCode,
   ArrowRight,
   Link2,
+  Sparkles,
+  Twitter,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { API_BASE_URL } from "@/config";
@@ -23,21 +25,21 @@ const FEATURES = [
     title: "Instant Reviews",
     description:
       "Get detailed AI feedback on every pull request within seconds, not hours. Ship faster with confidence.",
-    color: "from-amber-500 to-orange-600",
+    accent: "bg-amber-50 text-amber-600",
   },
   {
     icon: Shield,
     title: "Security First",
     description:
       "Automatically detect vulnerabilities, leaked secrets, and insecure patterns before they reach production.",
-    color: "from-emerald-500 to-teal-600",
+    accent: "bg-emerald-50 text-emerald-600",
   },
   {
     icon: Github,
     title: "GitHub Native",
     description:
       "Zero-config integration. Install the GitHub App, and ReviewHog comments directly on your pull requests.",
-    color: "from-blue-500 to-violet-600",
+    accent: "bg-indigo-50 text-indigo-600",
   },
 ];
 
@@ -100,67 +102,43 @@ const LandingPage = () => {
     window.location.href = `${API_BASE_URL}/api/auth/github`;
   };
 
-  /* ─── particle positions (stable between rerenders) ─── */
-  const particles = useMemo(
-    () =>
-      Array.from({ length: 40 }, () => ({
-        top: `${Math.random() * 100}%`,
-        left: `${Math.random() * 100}%`,
-        delay: Math.random() * 5,
-        duration: 3 + Math.random() * 4,
-        size: 1 + Math.random() * 2,
-      })),
-    []
-  );
-
   /* ─── loading state ─── */
   if (checkingAuth) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       {/* ─── Navbar ─── */}
       <Navbar onGetStarted={handleGitHubLogin} isLoading={isLoading} />
 
       {/* ─── Hero ─── */}
-      <section className="relative flex min-h-screen items-center overflow-hidden pt-16">
-        {/* Gradient blobs */}
+      <section className="relative flex min-h-screen items-center overflow-hidden pt-24">
+        {/* Ambient glow blobs */}
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -left-40 top-0 h-[600px] w-[600px] rounded-full bg-blue-600/15 blur-[120px]" />
-          <div className="absolute -right-40 bottom-0 h-[500px] w-[500px] rounded-full bg-violet-600/15 blur-[120px]" />
+          <div className="glow-blob absolute -left-60 top-20 h-[500px] w-[500px] bg-indigo-200/60" />
+          <div className="glow-blob absolute -right-40 bottom-10 h-[400px] w-[400px] bg-violet-200/50" />
+          <div className="glow-blob absolute left-1/3 top-1/2 h-[300px] w-[300px] bg-purple-200/40" />
         </div>
 
-        {/* Floating particles */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          {particles.map((p, i) => (
-            <motion.div
-              key={i}
-              className="absolute rounded-full bg-blue-400/30"
-              style={{
-                top: p.top,
-                left: p.left,
-                width: p.size,
-                height: p.size,
-              }}
-              animate={{ opacity: [0, 1, 0], y: [0, -30, 0] }}
-              transition={{
-                duration: p.duration,
-                repeat: Infinity,
-                delay: p.delay,
-              }}
-            />
-          ))}
-        </div>
-
-        <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-12 px-6 lg:grid-cols-2 lg:gap-16">
+        <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-12 px-6 lg:grid-cols-2 lg:gap-20">
           {/* Left — copy */}
           <div className="flex flex-col justify-center space-y-8">
-
+            {/* Badge */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <span className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-4 py-1.5 text-xs font-medium text-muted-foreground shadow-sm">
+                <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                AI-Powered Code Reviews for GitHub
+              </span>
+            </motion.div>
 
             {/* Headline */}
             <motion.h1
@@ -196,7 +174,7 @@ const LandingPage = () => {
                 id="hero-cta"
                 onClick={handleGitHubLogin}
                 disabled={isLoading}
-                className="group inline-flex cursor-pointer items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 disabled:opacity-50"
+                className="group inline-flex cursor-pointer items-center gap-2.5 rounded-full bg-foreground px-7 py-3.5 text-sm font-semibold text-background shadow-lg shadow-black/10 transition-all hover:bg-foreground/90 hover:shadow-xl hover:shadow-black/15 disabled:opacity-50"
               >
                 {isLoading ? "Connecting…" : "Get Started Free"}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -205,7 +183,7 @@ const LandingPage = () => {
                 href="https://github.com/TusharSharma811/ReviewHog"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-7 py-3.5 text-sm font-medium text-foreground transition-all hover:bg-gray-50 hover:border-gray-300"
               >
                 <Github className="h-4 w-4" />
                 GitHub
@@ -253,14 +231,16 @@ const LandingPage = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.2 }}
                 transition={{ duration: 0.5, delay: i * 0.12 }}
-                className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 transition-colors hover:border-white/[0.12] hover:bg-white/[0.04]"
+                className="card-hover group rounded-2xl border border-border bg-white p-8"
               >
                 <div
-                  className={`mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${f.color} shadow-lg`}
+                  className={`mb-5 flex h-12 w-12 items-center justify-center rounded-xl ${f.accent}`}
                 >
-                  <f.icon className="h-5 w-5 text-white" />
+                  <f.icon className="h-5 w-5" />
                 </div>
-                <h3 className="mb-2 text-lg font-semibold">{f.title}</h3>
+                <h3 className="mb-2 text-lg font-semibold text-foreground">
+                  {f.title}
+                </h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {f.description}
                 </p>
@@ -273,7 +253,7 @@ const LandingPage = () => {
       {/* ─── How it works ─── */}
       <section id="how-it-works" className="relative py-32">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute left-1/2 top-0 h-[500px] w-[700px] -translate-x-1/2 rounded-full bg-violet-600/10 blur-[140px]" />
+          <div className="glow-blob absolute left-1/2 top-0 h-[500px] w-[700px] -translate-x-1/2 bg-indigo-100/50" />
         </div>
 
         <div className="relative z-10 mx-auto max-w-7xl px-6">
@@ -301,15 +281,17 @@ const LandingPage = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.2 }}
                 transition={{ duration: 0.5, delay: i * 0.15 }}
-                className="relative rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8"
+                className="card-hover relative rounded-2xl border border-border bg-white p-8"
               >
-                <span className="absolute right-6 top-6 font-mono text-5xl font-black text-white/[0.04]">
+                <span className="absolute right-6 top-6 font-mono text-5xl font-black text-gray-100">
                   {s.step}
                 </span>
-                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04]">
-                  <s.icon className="h-5 w-5 text-primary" />
+                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-gray-50">
+                  <s.icon className="h-5 w-5 text-indigo-500" />
                 </div>
-                <h3 className="mb-2 text-lg font-semibold">{s.title}</h3>
+                <h3 className="mb-2 text-lg font-semibold text-foreground">
+                  {s.title}
+                </h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {s.description}
                 </p>
@@ -327,9 +309,12 @@ const LandingPage = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.6 }}
-            className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-br from-blue-600/10 via-violet-600/10 to-transparent p-12 text-center md:p-20"
+            className="relative overflow-hidden rounded-3xl border border-border bg-white p-12 text-center shadow-lg md:p-20"
           >
-            <div className="pointer-events-none absolute -right-20 -top-20 h-80 w-80 rounded-full bg-blue-600/10 blur-[100px]" />
+            {/* Decorative glow */}
+            <div className="pointer-events-none absolute -right-20 -top-20 h-80 w-80 rounded-full bg-indigo-100/50 blur-[100px]" />
+            <div className="pointer-events-none absolute -left-20 -bottom-20 h-60 w-60 rounded-full bg-violet-100/50 blur-[80px]" />
+
             <h2 className="relative z-10 text-3xl font-bold tracking-tight sm:text-4xl">
               Ready to level up your code reviews?
             </h2>
@@ -342,7 +327,7 @@ const LandingPage = () => {
                 id="cta-banner-button"
                 onClick={handleGitHubLogin}
                 disabled={isLoading}
-                className="group inline-flex cursor-pointer items-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold text-black transition-all hover:bg-white/90 disabled:opacity-50"
+                className="group inline-flex cursor-pointer items-center gap-2.5 rounded-full bg-foreground px-7 py-3.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90 disabled:opacity-50"
               >
                 <Github className="h-4 w-4" />
                 {isLoading ? "Connecting…" : "Continue with GitHub"}
@@ -354,15 +339,108 @@ const LandingPage = () => {
       </section>
 
       {/* ─── Footer ─── */}
-      <footer className="border-t border-white/[0.06] py-10">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 text-sm text-muted-foreground sm:flex-row">
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-gradient-to-br from-blue-500 to-violet-600">
-              <MessageSquareCode className="h-3 w-3 text-white" />
+      <footer className="border-t border-border bg-white py-16">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="grid gap-12 md:grid-cols-4">
+            {/* Brand */}
+            <div className="md:col-span-1">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-foreground">
+                  <MessageSquareCode className="h-3.5 w-3.5 text-background" />
+                </div>
+                <span className="text-base font-bold text-foreground">
+                  ReviewHog
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                AI-powered code reviews for every GitHub pull request.
+              </p>
             </div>
-            <span className="font-semibold text-foreground">ReviewHog</span>
+
+            {/* Product */}
+            <div>
+              <h4 className="mb-4 text-sm font-semibold text-foreground">
+                Product
+              </h4>
+              <ul className="space-y-3">
+                <li>
+                  <a
+                    href="#features"
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#how-it-works"
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    How it Works
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Resources */}
+            <div>
+              <h4 className="mb-4 text-sm font-semibold text-foreground">
+                Resources
+              </h4>
+              <ul className="space-y-3">
+                <li>
+                  <a
+                    href="https://github.com/TusharSharma811/ReviewHog"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    GitHub
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/TusharSharma811/ReviewHog/issues"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Support
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Social */}
+            <div>
+              <h4 className="mb-4 text-sm font-semibold text-foreground">
+                Connect
+              </h4>
+              <div className="flex items-center gap-3">
+                <a
+                  href="https://github.com/TusharSharma811/ReviewHog"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-gray-50 hover:text-foreground"
+                >
+                  <Github className="h-4 w-4" />
+                </a>
+                <a
+                  href="#"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-gray-50 hover:text-foreground"
+                >
+                  <Twitter className="h-4 w-4" />
+                </a>
+              </div>
+            </div>
           </div>
-          <p>© {new Date().getFullYear()} ReviewHog. All rights reserved.</p>
+
+          {/* Copyright */}
+          <div className="mt-12 border-t border-border pt-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} ReviewHog. All rights reserved.
+            </p>
+          </div>
         </div>
       </footer>
     </div>

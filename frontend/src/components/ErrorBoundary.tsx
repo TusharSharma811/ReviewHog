@@ -32,9 +32,9 @@ class ErrorBoundary extends Component<Props, State> {
             return (
                 <div className="min-h-screen flex items-center justify-center bg-background p-4">
                     <div className="max-w-md w-full text-center space-y-6">
-                        <div className="p-4 bg-destructive/10 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
+                        <div className="p-4 bg-red-50 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
                             <svg
-                                className="h-8 w-8 text-destructive"
+                                className="h-8 w-8 text-red-500"
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 stroke="currentColor"
@@ -53,7 +53,7 @@ class ErrorBoundary extends Component<Props, State> {
                                 An unexpected error occurred in the application.
                             </p>
                             {this.state.error && (
-                                <p className="text-xs text-muted-foreground/70 font-mono mt-2 p-2 bg-muted/50 rounded">
+                                <p className="text-xs text-muted-foreground/70 font-mono mt-2 p-3 bg-gray-50 rounded-xl border border-border">
                                     {this.state.error.message}
                                 </p>
                             )}
@@ -61,13 +61,13 @@ class ErrorBoundary extends Component<Props, State> {
                         <div className="flex gap-3 justify-center">
                             <button
                                 onClick={this.handleReload}
-                                className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-6 transition-colors"
+                                className="inline-flex items-center justify-center rounded-full text-sm font-medium bg-foreground text-background hover:bg-foreground/90 h-10 px-6 transition-colors"
                             >
                                 Reload Page
                             </button>
                             <a
                                 href="/"
-                                className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-border bg-background hover:bg-muted h-10 px-6 transition-colors"
+                                className="inline-flex items-center justify-center rounded-full text-sm font-medium border border-border bg-white hover:bg-gray-50 h-10 px-6 transition-colors"
                             >
                                 Go Home
                             </a>

@@ -1,5 +1,4 @@
 import { Star, ChevronDown } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Review {
   id: string;
@@ -40,7 +39,7 @@ function renderStars(rating: number | null | undefined) {
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}
-          className={`h-3 w-3 ${i < clamped ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground/30"}`}
+          className={`h-3 w-3 ${i < clamped ? "text-amber-400 fill-amber-400" : "text-gray-200"}`}
         />
       ))}
     </div>
@@ -49,13 +48,13 @@ function renderStars(rating: number | null | undefined) {
 
 export const RecentActivity = ({ recentActivities, hasMore = false, onLoadMore }: RecentActivityProps) => {
   return (
-    <Card className="bg-gradient-card border-border shadow-card">
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="rounded-2xl border border-border bg-white">
+      <div className="px-6 py-5 border-b border-border">
+        <h3 className="text-lg font-semibold text-foreground">Recent Activity</h3>
+      </div>
+      <div className="p-6 space-y-3">
         {recentActivities.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
+          <p className="text-sm text-muted-foreground text-center py-8">
             No reviews yet. Open a pull request to get your first AI review!
           </p>
         ) : (
@@ -70,9 +69,9 @@ export const RecentActivity = ({ recentActivities, hasMore = false, onLoadMore }
               return (
                 <div
                   key={review.id}
-                  className="p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  className="p-4 rounded-xl bg-gray-50/80 hover:bg-gray-100/80 transition-colors"
                 >
-                  <div className="flex items-start justify-between mb-1">
+                  <div className="flex items-start justify-between mb-1.5">
                     <span className="text-sm font-medium text-foreground">{repoName}</span>
                     <span className="text-xs text-muted-foreground shrink-0 ml-2">
                       {timeAgo(review.createdAt)}
@@ -90,7 +89,7 @@ export const RecentActivity = ({ recentActivities, hasMore = false, onLoadMore }
             {hasMore && onLoadMore && (
               <button
                 onClick={onLoadMore}
-                className="w-full flex items-center justify-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors py-2 cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors py-3 cursor-pointer rounded-xl hover:bg-indigo-50/50"
               >
                 <ChevronDown className="h-4 w-4" />
                 Load more
@@ -98,7 +97,7 @@ export const RecentActivity = ({ recentActivities, hasMore = false, onLoadMore }
             )}
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };

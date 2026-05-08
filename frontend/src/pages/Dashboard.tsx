@@ -1,4 +1,4 @@
-import { Bot, GitBranchIcon, GitPullRequest, Loader2, Star, ExternalLink, LogOut, RefreshCw } from "lucide-react";
+import { GitBranchIcon, GitPullRequest, Loader2, Star, ExternalLink, LogOut, RefreshCw } from "lucide-react";
 import { MetricsCard } from "@/components/MetricsCard";
 import { RecentActivity } from "@/components/RecentActivity";
 import { RepositoryCard } from "@/components/RepositoryCard";
@@ -7,6 +7,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
 import { toast } from "sonner";
 import { setToken, removeToken, authFetch } from "@/lib/auth";
+import LOGO from "../assets/Gemini_Generated_Image_azcybkazcybkazcy-removebg-preview.png";
 
 interface Metrics {
   totalPRs?: number;
@@ -166,9 +167,9 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          <Loader2 className="h-8 w-8 text-foreground animate-spin" />
           <p className="text-sm text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>
@@ -177,13 +178,13 @@ const Dashboard = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4 text-center px-4">
-          <p className="text-lg font-semibold text-destructive">Failed to load dashboard</p>
+          <p className="text-lg font-semibold text-red-600">Failed to load dashboard</p>
           <p className="text-sm text-muted-foreground">{error}</p>
           <a
             href="/"
-            className="mt-2 text-sm text-primary underline hover:text-primary/80 transition-colors"
+            className="mt-2 text-sm text-indigo-600 underline hover:text-indigo-700 transition-colors"
           >
             ← Back to login
           </a>
@@ -198,30 +199,28 @@ const Dashboard = () => {
   const pagination = userData?.pagination;
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm">
+      <header className="border-b border-border bg-white">
         <div className="container mx-auto px-4 md:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-primary rounded-lg">
-                <Bot className="h-6 w-6 text-primary-foreground" />
-              </div>
+              <img src={LOGO} alt="ReviewHog Logo" className="h-8 w-8" />
               <div>
-                <h1 className="text-xl font-semibold text-foreground">ReviewHog</h1>
+                <h1 className="text-lg font-semibold text-foreground">ReviewHog</h1>
                 <p className="text-sm text-muted-foreground">
                   {userData?.name ? `Welcome back, ${userData.name}` : "GitHub Integration Dashboard"}
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-1 text-sm text-success">
-                <div className="w-2 h-2 bg-success rounded-full animate-pulse" />
-                <span className="hidden sm:inline">Active</span>
+              <div className="flex items-center space-x-1.5 text-sm text-emerald-600">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                <span className="hidden sm:inline font-medium">Active</span>
               </div>
               <button
                 onClick={handleLogout}
-                className="inline-flex items-center gap-2 rounded-md text-sm font-medium border border-border bg-background hover:bg-muted h-9 px-3 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-white hover:bg-gray-50 h-9 px-4 transition-colors cursor-pointer"
               >
                 <LogOut className="h-4 w-4" />
                 <span className="hidden sm:inline">Logout</span>
@@ -235,7 +234,7 @@ const Dashboard = () => {
       <main className="container mx-auto px-4 md:px-6 py-8">
         {/* Install GitHub App Banner */}
         {repositories.length === 0 && (
-          <div className="mb-8 p-6 rounded-lg border border-primary/20 bg-primary/5">
+          <div className="mb-8 p-6 rounded-2xl border border-indigo-200 bg-indigo-50/50">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h3 className="text-lg font-semibold text-foreground mb-1">
@@ -255,7 +254,7 @@ const Dashboard = () => {
                 href={GITHUB_APP_INSTALL_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 shrink-0 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-6 text-sm font-medium transition-colors"
+                className="inline-flex items-center gap-2 shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90 h-10 px-6 text-sm font-medium transition-colors"
               >
                 Install GitHub App
                 <ExternalLink className="h-4 w-4" />

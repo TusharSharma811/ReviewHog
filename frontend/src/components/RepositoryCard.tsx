@@ -1,6 +1,5 @@
 import ToggleSwitch from "./ToggleSwitch";
 import { GitFork, Star, ChevronDown } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Repository {
   id: string;
@@ -35,13 +34,13 @@ function timeAgo(dateStr: string): string {
 
 export const RepositoryCard = ({ repositories, hasMore = false, onLoadMore }: RepositoryCardProps) => {
   return (
-    <Card className="bg-gradient-card border-border shadow-card">
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold">Repositories</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="rounded-2xl border border-border bg-white">
+      <div className="px-6 py-5 border-b border-border">
+        <h3 className="text-lg font-semibold text-foreground">Repositories</h3>
+      </div>
+      <div className="p-6 space-y-3">
         {repositories.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
+          <p className="text-sm text-muted-foreground text-center py-8">
             No repositories connected yet.
           </p>
         ) : (
@@ -53,15 +52,20 @@ export const RepositoryCard = ({ repositories, hasMore = false, onLoadMore }: Re
               return (
                 <div
                   key={repo.id}
-                  className="flex items-start justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  className="flex items-start justify-between p-4 rounded-xl bg-gray-50/80 hover:bg-gray-100/80 transition-colors"
                 >
-                  <div className="space-y-1 flex-1 min-w-0">
+                  <div className="space-y-1.5 flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{repoName}</p>
                     {repo.description && (
                       <p className="text-xs text-muted-foreground truncate">{repo.description}</p>
                     )}
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      {repo.language && <span>{repo.language}</span>}
+                      {repo.language && (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="h-2 w-2 rounded-full bg-indigo-400" />
+                          {repo.language}
+                        </span>
+                      )}
                       {(repo.stars ?? 0) > 0 && (
                         <span className="flex items-center gap-1">
                           <Star className="h-3 w-3" />
@@ -86,7 +90,7 @@ export const RepositoryCard = ({ repositories, hasMore = false, onLoadMore }: Re
             {hasMore && onLoadMore && (
               <button
                 onClick={onLoadMore}
-                className="w-full flex items-center justify-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors py-2 cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors py-3 cursor-pointer rounded-xl hover:bg-indigo-50/50"
               >
                 <ChevronDown className="h-4 w-4" />
                 Load more
@@ -94,7 +98,7 @@ export const RepositoryCard = ({ repositories, hasMore = false, onLoadMore }: Re
             )}
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
