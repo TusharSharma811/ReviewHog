@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import { logger } from "./utils/logger.js";
+
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -79,10 +81,10 @@ app.get("/", (_req: Request, res: Response) => {
 
 // --- Global Error Handler ---
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error("Unhandled error:", err);
+  logger.error("SERVER", "Unhandled error", { message: err.message, stack: err.stack });
   res.status(500).json({ message: "Internal server error" });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server started successfully on port ${PORT}`);
+  logger.info("SERVER", `Server started on port ${PORT}`);
 });

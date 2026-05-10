@@ -4,6 +4,7 @@ import crypto from "crypto";
 import prisma from "../db/prismaClient.js";
 import { getGithubToken } from "../utils/getGithubToken.js";
 import { safeRunCodeReview } from "../utils/aiUtil.js";
+import { logger } from "../utils/logger.js";
 import { z } from "zod";
 
 // Files that should never be reviewed — they produce noisy, unhelpful feedback
@@ -116,6 +117,11 @@ async function computeAvgRating(ownerId: string): Promise<number | null> {
  * Process the PR review in the background (after webhook has responded 200).
  */
 async function processPullRequest(payload: PullRequestPayload): Promise<void> {
+  const prId = payload.pull_request.id;
+  const repoFullName = `${payload.repository.owner.login}/${payload.repository.name}`;
+
+  logger.info("WEBHOOK", `Processing PR review`, { prId, repo: repoFullName });
+
   try {
     const token = await getGithubToken(payload.installation.id);
     const headers = {
@@ -123,8 +129,10 @@ async function processPullRequest(payload: PullRequestPayload): Promise<void> {
       Accept: "application/vnd.github+json",
     };
 
+    logger.info("WEBHOOK", "GitHub token acquired", { prId, installationId: payload.installation.id });
+
     const createResp = await axios.post<CheckRunResponse>(
-      `https://api.github.com/repos/${payload.repository.owner.login}/${payload.repository.name}/check-runs`,
+      `https://api.github.com/repos/${repoFullName}/check-runs`,
       {
         name: "AI Code Review",
         head_sha: payload.pull_request.head.sha,
@@ -134,19 +142,34 @@ async function processPullRequest(payload: PullRequestPayload): Promise<void> {
     );
     const checkRunId = createResp.data.id;
 
+    logger.info("WEBHOOK", "Check run created", { prId, checkRunId });
+
     const prFilesRes = await axios.get<PullRequestFile[]>(
       `${payload.pull_request.url}/files`,
       { headers: { ...headers, Accept: "application/vnd.github.v3+json" } }
     );
 
-    const reviewableFiles = prFilesRes.data.filter(
+    const allFiles = prFilesRes.data;
+    const reviewableFiles = allFiles.filter(
       (file) => file.status !== "removed" && file.patch && !shouldSkipFile(file.filename, file.patch.length)
     );
+
+    const skippedFiles = allFiles.filter(
+      (file) => file.status === "removed" || !file.patch || shouldSkipFile(file.filename, file.patch?.length ?? 0)
+    );
+
+    logger.info("WEBHOOK", `File analysis complete`, {
+      prId,
+      totalFiles: allFiles.length,
+      reviewable: reviewableFiles.length,
+      skipped: skippedFiles.length,
+      skippedNames: skippedFiles.map(f => f.filename),
+    });
 
     if (reviewableFiles.length === 0) {
       // Complete the check run even if no files to review
       await axios.patch(
-        `https://api.github.com/repos/${payload.repository.owner.login}/${payload.repository.name}/check-runs/${checkRunId}`,
+        `https://api.github.com/repos/${repoFullName}/check-runs/${checkRunId}`,
         {
           name: "AI Code Review",
           head_sha: payload.pull_request.head.sha,
@@ -154,21 +177,21 @@ async function processPullRequest(payload: PullRequestPayload): Promise<void> {
           conclusion: "success",
           output: {
             title: "No reviewable files",
-            summary: `All ${prFilesRes.data.length} changed file(s) were skipped (lock files, images, configs, etc.)`,
+            summary: `All ${allFiles.length} changed file(s) were skipped (lock files, images, configs, etc.)`,
           },
         },
         { headers }
       );
+      logger.info("WEBHOOK", "No reviewable files, check run completed", { prId });
       return;
     }
-
-    console.log(`📝 Reviewing ${reviewableFiles.length}/${prFilesRes.data.length} files`);
 
     let finalConclusion: "success" | "failure" | "neutral" = "success";
     let issuesInPR = 0;
     let passesInPR = 0;
 
     for (const file of reviewableFiles) {
+      logger.info("WEBHOOK", `Reviewing file`, { prId, file: file.filename, patchLength: file.patch!.length });
 
       const tempCommentRes = await axios.post<CommentResponse>(
         payload.pull_request.comments_url,
@@ -180,28 +203,53 @@ async function processPullRequest(payload: PullRequestPayload): Promise<void> {
       );
 
       const commentId = tempCommentRes.data.id;
+      logger.debug("WEBHOOK", "Placeholder comment posted", { prId, commentId, file: file.filename });
 
-      const contentRes = await axios.get<string>(file.contents_url, {
-        headers: { ...headers, Accept: "application/vnd.github.v3.raw" },
-      });
+      let fileContent: string;
+      try {
+        const contentRes = await axios.get<string>(file.contents_url, {
+          headers: { ...headers, Accept: "application/vnd.github.v3.raw" },
+        });
+        fileContent = contentRes.data;
+        logger.debug("WEBHOOK", "File content fetched", { prId, file: file.filename, contentLength: String(fileContent).length });
+      } catch (fetchErr) {
+        logger.error("WEBHOOK", "Failed to fetch file content", {
+          prId,
+          file: file.filename,
+          error: fetchErr instanceof Error ? fetchErr.message : String(fetchErr),
+        });
+        fileContent = "(file content unavailable)";
+      }
 
       let aiResponse: AIResponse;
       try {
         aiResponse = await safeRunCodeReview(
           file.patch!,
-          `File Path: ${file.filename}\n\n${contentRes.data}`
+          `File Path: ${file.filename}\n\n${fileContent}`
         );
+        logger.info("WEBHOOK", "AI review received", {
+          prId,
+          file: file.filename,
+          rating: aiResponse.rating,
+          conclusion: aiResponse.conclusion,
+        });
       } catch (err) {
-        console.error(`AI failed for ${file.filename}:`, err);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        logger.error("WEBHOOK", "AI review threw unexpected error", {
+          prId,
+          file: file.filename,
+          error: errMsg,
+          stack: err instanceof Error ? err.stack : undefined,
+        });
         aiResponse = {
-          comment: "AI review failed.",
+          comment: `⚠️ AI review failed for this file.\n\n**Error:** ${errMsg}\n\nPlease review manually.`,
           conclusion: "neutral",
-          rating: 2,
+          rating: 3,
         };
       }
 
       await axios.patch(
-        `https://api.github.com/repos/${payload.repository.owner.login}/${payload.repository.name}/issues/comments/${commentId}`,
+        `https://api.github.com/repos/${repoFullName}/issues/comments/${commentId}`,
         { body: aiResponse.comment },
         { headers }
       );
@@ -222,10 +270,12 @@ async function processPullRequest(payload: PullRequestPayload): Promise<void> {
           rating: aiResponse.rating,
         },
       });
+
+      logger.debug("WEBHOOK", "Review saved to DB", { prId, file: file.filename });
     }
 
     await axios.patch(
-      `https://api.github.com/repos/${payload.repository.owner.login}/${payload.repository.name}/check-runs/${checkRunId}`,
+      `https://api.github.com/repos/${repoFullName}/check-runs/${checkRunId}`,
       {
         name: "AI Code Review",
         head_sha: payload.pull_request.head.sha,
@@ -259,9 +309,22 @@ async function processPullRequest(payload: PullRequestPayload): Promise<void> {
       },
     });
 
-    console.log(`✅ PR ${payload.pull_request.id} reviewed successfully`);
+    logger.info("WEBHOOK", `PR review complete`, {
+      prId,
+      repo: repoFullName,
+      filesReviewed: reviewableFiles.length,
+      conclusion: finalConclusion,
+      issues: issuesInPR,
+      passes: passesInPR,
+    });
   } catch (err) {
-    console.error("❌ Error processing PR review:", err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    logger.error("WEBHOOK", "Fatal error processing PR review", {
+      prId,
+      repo: repoFullName,
+      error: errMsg,
+      stack: err instanceof Error ? err.stack : undefined,
+    });
   }
 }
 
@@ -275,7 +338,9 @@ export const pullRequestWebhook = async (
     // FIX #14: Validate webhook payload with Zod
     const parsed = pullRequestPayloadSchema.safeParse(payload);
     if (!parsed.success) {
-      console.error("Invalid PR webhook payload:", parsed.error.issues);
+      logger.error("WEBHOOK", "Invalid PR webhook payload", {
+        issues: parsed.error.issues,
+      });
       return res.status(400).send("Invalid payload");
     }
 
@@ -286,10 +351,15 @@ export const pullRequestWebhook = async (
     });
 
     if (!repoInfo || !repoInfo.isReviewOn) {
+      logger.info("WEBHOOK", "Review disabled for repo, skipping", {
+        repoId: validPayload.repository.id,
+        isReviewOn: repoInfo?.isReviewOn ?? false,
+      });
       return res.status(200).send("Review disabled for this repo");
     }
 
     if (action !== "opened") {
+      logger.debug("WEBHOOK", `Action '${action}' ignored`, { prId: validPayload.pull_request.id });
       return res.status(200).send("Action ignored");
     }
 
@@ -302,7 +372,9 @@ export const pullRequestWebhook = async (
     });
 
     if (existingReview) {
-      console.log(`⏭️ PR ${validPayload.pull_request.id} already reviewed, skipping (webhook retry)`);
+      logger.info("WEBHOOK", "PR already reviewed, skipping (webhook retry)", {
+        prId: validPayload.pull_request.id,
+      });
       return res.status(200).send("Already reviewed");
     }
 
@@ -310,14 +382,27 @@ export const pullRequestWebhook = async (
     // This prevents GitHub from retrying the webhook due to timeout
     res.status(200).send("Processing");
 
+    logger.info("WEBHOOK", "Webhook accepted, starting background processing", {
+      prId: validPayload.pull_request.id,
+      repo: `${validPayload.repository.owner.login}/${validPayload.repository.name}`,
+      action,
+    });
+
     // Run the actual review work asynchronously
     setImmediate(() => {
       processPullRequest(validPayload).catch((err) => {
-        console.error("❌ Background PR processing failed:", err);
+        logger.error("WEBHOOK", "Background PR processing crashed", {
+          prId: validPayload.pull_request.id,
+          error: err instanceof Error ? err.message : String(err),
+          stack: err instanceof Error ? err.stack : undefined,
+        });
       });
     });
   } catch (err) {
-    console.error("❌ Error processing PR webhook:", err);
+    logger.error("WEBHOOK", "Unhandled error in PR webhook handler", {
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     res.status(500).send("Internal Server Error");
   }
 };
