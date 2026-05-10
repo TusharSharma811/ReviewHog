@@ -122,9 +122,9 @@ const Dashboard = () => {
     }
   }, [navigate]);
 
-  const fetchMetrics = useCallback(async () => {
+  const fetchMetrics = useCallback(async (silent = false) => {
     try {
-      setMetricsLoading(true);
+      if (!silent) setMetricsLoading(true);
       const response = await authFetch(
         `${API_BASE_URL}/api/users/data/me/metrics`,
         { method: "GET" }
@@ -137,13 +137,13 @@ const Dashboard = () => {
     } catch {
       // Metrics are non-critical; don't block dashboard
     } finally {
-      setMetricsLoading(false);
+      if (!silent) setMetricsLoading(false);
     }
   }, []);
 
-  const fetchActivity = useCallback(async () => {
+  const fetchActivity = useCallback(async (silent = false) => {
     try {
-      setActivityLoading(true);
+      if (!silent) setActivityLoading(true);
       const response = await authFetch(
         `${API_BASE_URL}/api/users/data/me/github-activity`,
         { method: "GET" }
@@ -156,7 +156,7 @@ const Dashboard = () => {
     } catch {
       // Activity is non-critical
     } finally {
-      setActivityLoading(false);
+      if (!silent) setActivityLoading(false);
     }
   }, []);
 
@@ -203,12 +203,12 @@ const Dashboard = () => {
     };
   }, [fetchData, fetchMetrics, fetchActivity, isNewUser, searchParams]);
 
-  // Auto-refresh all dashboard data every 30 seconds
+  // Auto-refresh all dashboard data every 30 seconds (silent — no loaders)
   useEffect(() => {
     const refreshInterval = setInterval(() => {
       fetchData(1, true);
-      fetchMetrics();
-      fetchActivity();
+      fetchMetrics(true);
+      fetchActivity(true);
     }, 30000);
 
     return () => clearInterval(refreshInterval);
