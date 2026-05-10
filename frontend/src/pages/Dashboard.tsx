@@ -1,10 +1,9 @@
-import { Loader2, ExternalLink, LogOut, RefreshCw } from "lucide-react";
+import { Loader2, ExternalLink, LogOut, RefreshCw, Settings as SettingsIcon } from "lucide-react";
 import { MetricsSection } from "@/components/MetricsSection";
 import { GitHubActivitySection } from "@/components/GitHubActivity";
 import { RecentActivity } from "@/components/RecentActivity";
 import { RepositoryCard } from "@/components/RepositoryCard";
 import { AddRepoModal } from "@/components/AddRepoModal";
-import { AiSettingsPanel } from "@/components/AiSettingsPanel";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
@@ -354,6 +353,13 @@ const Dashboard = () => {
                 <span className="hidden sm:inline font-medium">Active</span>
               </div>
               <button
+                onClick={() => navigate("/settings")}
+                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-white hover:bg-gray-50 h-9 px-4 transition-colors cursor-pointer"
+              >
+                <SettingsIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Settings</span>
+              </button>
+              <button
                 onClick={handleLogout}
                 className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-white hover:bg-gray-50 h-9 px-4 transition-colors cursor-pointer"
               >
@@ -423,7 +429,6 @@ const Dashboard = () => {
 
           {/* Repository Status */}
           <div className="space-y-6">
-            <AiSettingsPanel />
             <RepositoryCard
               repositories={repositories}
               hasMore={pagination?.hasMoreRepos ?? false}

@@ -23,6 +23,14 @@ const repoHandlerPayloadSchema = z.object({
   })).optional(),
 });
 
+async function getDefaultRepoReviewOn(ownerId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: ownerId },
+    select: { defaultRepoReviewOn: true },
+  });
+  return user?.defaultRepoReviewOn ?? true;
+}
+
 export const repoHandlerWebhook = async (
   _req: Request,
   res: Response,
@@ -41,6 +49,10 @@ export const repoHandlerWebhook = async (
     switch (action) {
       case "added":
         if (validPayload.repositories_added) {
+          const defaultRepoReviewOn = await getDefaultRepoReviewOn(
+            validPayload.installation.account.id.toString()
+          );
+
           await prisma.repo.createMany({
             data: validPayload.repositories_added.map((repo) => ({
               id: repo.id.toString(),
@@ -48,7 +60,7 @@ export const repoHandlerWebhook = async (
               description: repo.description ?? "",
               url: validPayload.installation.account.html_url + `/${repo.name}`,
               ownerId: validPayload.installation.account.id.toString(),
-              isReviewOn: true,
+              isReviewOn: defaultRepoReviewOn,
             })),
             skipDuplicates: true,
           });

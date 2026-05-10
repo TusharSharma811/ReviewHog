@@ -21,6 +21,14 @@ const installationPayloadSchema = z.object({
 
 type InstallationPayload = z.infer<typeof installationPayloadSchema>;
 
+async function getDefaultRepoReviewOn(ownerId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: ownerId },
+    select: { defaultRepoReviewOn: true },
+  });
+  return user?.defaultRepoReviewOn ?? true;
+}
+
 export const installationWebhook = async (
   _req: Request,
   res: Response,
@@ -37,7 +45,11 @@ export const installationWebhook = async (
     const validPayload = parsed.data;
 
     switch (action) {
-      case "created":
+      case "created": {
+        const defaultRepoReviewOn = await getDefaultRepoReviewOn(
+          validPayload.installation.account.id.toString()
+        );
+
         await prisma.repo.createMany({
           data: validPayload.repositories.map((repo) => ({
             id: repo.id.toString(),
@@ -45,11 +57,12 @@ export const installationWebhook = async (
             description: repo.description ?? "",
             url: validPayload.installation.account.html_url + `/${repo.name}`,
             ownerId: validPayload.installation.account.id.toString(),
-            isReviewOn: true,
+            isReviewOn: defaultRepoReviewOn,
           })),
           skipDuplicates: true,
         });
         break;
+      }
 
       case "deleted":
         // With onDelete: Cascade in schema, deleting the user will

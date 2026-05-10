@@ -20,6 +20,8 @@ model User {
   githubToken String?    // GitHub OAuth access token for fetching activity
   aiApiKey    String?    // Encrypted user OpenRouter API key
   aiModel     String?    // User-selected OpenRouter model
+  aiReviewsEnabled Boolean @default(true)
+  defaultRepoReviewOn Boolean @default(true)
   repos       Repo[]
   reviews     Review[]
   insights    Insight?
