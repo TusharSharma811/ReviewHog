@@ -1,6 +1,13 @@
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { ChatPromptTemplate } from "@langchain/core/prompts";
+import axios from "axios";
 import { z } from "zod";
+import prisma from "../db/prismaClient.js";
+import {
+  DEFAULT_OPENROUTER_MODEL,
+  OPENROUTER_CHAT_COMPLETIONS_URL,
+  decryptAISecret,
+  getDefaultOpenRouterApiKey,
+  getEffectiveOpenRouterModel,
+} from "./aiSettings.js";
 import { logger } from "./logger.js";
 
 interface AIResponse {
@@ -9,74 +16,231 @@ interface AIResponse {
   rating: number;
 }
 
-// ─── Validate API key at startup ────────────────────────────────────────────
-const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-
-if (!apiKey) {
-  logger.error("AI", "No Gemini API key found. Set GEMINI_API_KEY or GOOGLE_API_KEY in .env");
-} else {
-  logger.info("AI", "Gemini API key loaded", { keyPrefix: apiKey.slice(0, 6) + "..." });
+interface CodeReviewOptions {
+  ownerId?: string | null;
 }
 
-const model = new ChatGoogleGenerativeAI({
-  model: "gemini-2.5-flash-preview-05-20",
-  temperature: 0.7,
-  apiKey: apiKey || "missing-key",
+interface ResolvedAISettings {
+  apiKey: string | null;
+  model: string;
+  apiKeySource: "user" | "default";
+  modelSource: "user" | "default";
+}
+
+interface OpenRouterChatResponse {
+  choices?: Array<{
+    message?: {
+      content?: unknown;
+    };
+  }>;
+  error?: {
+    message?: string;
+  };
+}
+
+const requestTimeoutMs = Number(process.env.AI_REQUEST_TIMEOUT_MS || 60000);
+
+logger.info("AI", "OpenRouter configured", {
+  defaultModel: DEFAULT_OPENROUTER_MODEL,
+  hasDefaultApiKey: Boolean(getDefaultOpenRouterApiKey()),
 });
 
-// ─── Response validation schema ─────────────────────────────────────────────
 const reviewSchema = z.object({
   comment: z.string(),
   conclusion: z.enum(["success", "failure", "neutral"]),
   rating: z.number().min(1).max(5),
 });
 
-// ─── Prompt (asks for JSON directly instead of using tool-calling) ──────────
-const prompt = ChatPromptTemplate.fromTemplate(`
+const openRouterReviewSchema = {
+  type: "object",
+  properties: {
+    comment: {
+      type: "string",
+      description: "Markdown-formatted code review feedback for the changed file.",
+    },
+    conclusion: {
+      type: "string",
+      enum: ["success", "failure", "neutral"],
+      description: "Overall review outcome. Must align with the rating.",
+    },
+    rating: {
+      type: "number",
+      minimum: 1,
+      maximum: 5,
+      description: "Strict quality rating from 1 to 5.",
+    },
+  },
+  required: ["comment", "conclusion", "rating"],
+  additionalProperties: false,
+};
+
+function buildReviewPrompt(diff: string, fullFile: string): string {
+  return `
 You are a Senior Software Engineer performing a thorough, professional code review.
 
 ## Instructions
 - Review ONLY the code changes shown in the diff below.
 - Use the full file content for context, but focus your feedback on what changed.
-- Be specific and actionable — reference exact line numbers, variable names, and function names.
+- Be specific and actionable; reference exact line numbers, variable names, and function names where possible.
 - If the change is trivial (whitespace, imports, log statements), acknowledge it briefly and rate 4-5.
 
-## Rating Criteria (be strict and consistent)
-- **5/5 — Excellent**: Clean, idiomatic code. Proper error handling, good naming, follows project patterns. No issues.
-- **4/5 — Good**: Works correctly with minor style/convention suggestions. No functional problems.
-- **3/5 — Acceptable**: Functions correctly but has notable code smells, missing validation, weak error handling, or lacks edge case coverage.
-- **2/5 — Needs Work**: Has real bugs, unhandled errors, race conditions, or significant performance issues that should be fixed.
-- **1/5 — Critical**: Contains security vulnerabilities, data loss risks, broken logic, or injection vectors. Must not be merged.
+## Rating Criteria
+- 5/5 Excellent: Clean, idiomatic code. Proper error handling, good naming, follows project patterns. No issues.
+- 4/5 Good: Works correctly with minor style/convention suggestions. No functional problems.
+- 3/5 Acceptable: Functions correctly but has notable code smells, missing validation, weak error handling, or lacks edge case coverage.
+- 2/5 Needs Work: Has real bugs, unhandled errors, race conditions, or significant performance issues that should be fixed.
+- 1/5 Critical: Contains security vulnerabilities, data loss risks, broken logic, or injection vectors. Must not be merged.
 
 ## Conclusion Criteria
-- **success**: Code is production-ready. Rating should be 4-5.
-- **neutral**: Code works but could be improved. Rating should be 3.
-- **failure**: Code has problems that must be fixed. Rating should be 1-2.
+- success: Code is production-ready. Rating should be 4-5.
+- neutral: Code works but could be improved. Rating should be 3.
+- failure: Code has problems that must be fixed. Rating should be 1-2.
 
 Ensure your conclusion is consistent with your rating.
 
 ## Output Format
-You MUST respond with ONLY a valid JSON object (no markdown fences, no extra text) in this exact format:
-{{
+Respond with ONLY a valid JSON object. Do not include markdown fences or extra text.
+{
   "comment": "Your detailed markdown-formatted review here",
-  "conclusion": "success" | "failure" | "neutral",
-  "rating": 1-5
-}}
+  "conclusion": "neutral",
+  "rating": 3
+}
 
 ---
 
-**Git diff for this file:**
+Git diff for this file:
 \`\`\`diff
-{diff}
+${diff}
 \`\`\`
 
-**Full file content for reference:**
+Full file content for reference:
 \`\`\`
-{full_file}
+${fullFile}
 \`\`\`
-`);
+`.trim();
+}
 
-const chain = prompt.pipe(model);
+async function resolveAISettings(ownerId?: string | null): Promise<ResolvedAISettings> {
+  let userApiKey: string | null = null;
+  let userModel: string | null = null;
+
+  if (ownerId) {
+    const user = await prisma.user.findUnique({
+      where: { id: ownerId },
+      select: {
+        aiApiKey: true,
+        aiModel: true,
+      },
+    });
+
+    if (user) {
+      userModel = user.aiModel;
+      try {
+        userApiKey = decryptAISecret(user.aiApiKey);
+      } catch (err) {
+        logger.error("AI", "Failed to decrypt user AI key; falling back to default key", {
+          ownerId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+  }
+
+  return {
+    apiKey: userApiKey || getDefaultOpenRouterApiKey(),
+    model: getEffectiveOpenRouterModel(userModel),
+    apiKeySource: userApiKey ? "user" : "default",
+    modelSource: userModel?.trim() ? "user" : "default",
+  };
+}
+
+function normalizeContent(content: unknown): string {
+  if (typeof content === "string") return content;
+
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (typeof part === "string") return part;
+        if (part && typeof part === "object" && "text" in part) {
+          return String((part as { text?: unknown }).text ?? "");
+        }
+        return "";
+      })
+      .join("");
+  }
+
+  return content == null ? "" : JSON.stringify(content);
+}
+
+function hasAggregateErrors(err: unknown): err is { errors: unknown[] } {
+  return Boolean(
+    err &&
+    typeof err === "object" &&
+    "errors" in err &&
+    Array.isArray((err as { errors?: unknown }).errors)
+  );
+}
+
+function formatOpenRouterError(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    const status = err.response?.status;
+    const data = err.response?.data as { error?: { message?: string }; message?: string } | undefined;
+    const cause = err.cause as { message?: string; errors?: Array<{ message?: string }> } | undefined;
+    const causeMessage = cause?.message || cause?.errors?.map((item) => item.message).filter(Boolean).join("; ");
+    const message = data?.error?.message || data?.message || err.message || causeMessage || err.code || "Unknown request error";
+    return status ? `OpenRouter request failed (${status}): ${message}` : message;
+  }
+
+  if (hasAggregateErrors(err)) {
+    return err.errors.map((item) => item instanceof Error ? item.message : String(item)).join("; ");
+  }
+
+  return err instanceof Error ? err.message : String(err);
+}
+
+async function callOpenRouter(prompt: string, settings: ResolvedAISettings): Promise<string> {
+  if (!settings.apiKey) {
+    throw new Error("No OpenRouter API key configured. Set OPENROUTER_API_KEY or add a custom key in settings.");
+  }
+
+  const response = await axios.post<OpenRouterChatResponse>(
+    OPENROUTER_CHAT_COMPLETIONS_URL,
+    {
+      model: settings.model,
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "code_review",
+          strict: true,
+          schema: openRouterReviewSchema,
+        },
+      },
+      temperature: 0.2,
+      max_tokens: 1800,
+    },
+    {
+      timeout: Number.isFinite(requestTimeoutMs) ? requestTimeoutMs : 60000,
+      headers: {
+        Authorization: `Bearer ${settings.apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": process.env.FRONTEND_URL || "https://review-hog.vercel.app",
+        "X-OpenRouter-Title": "ReviewHog",
+      },
+    }
+  );
+
+  if (response.data.error?.message) {
+    throw new Error(`OpenRouter error: ${response.data.error.message}`);
+  }
+
+  return normalizeContent(response.data.choices?.[0]?.message?.content);
+}
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 2000;
@@ -85,24 +249,16 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Extract JSON from a model response that might contain markdown fences or extra text.
- */
 function extractJSON(raw: string): string {
-  // Try to extract from markdown code fences
   const fenceMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
   if (fenceMatch) return fenceMatch[1].trim();
 
-  // Try to find a JSON object directly
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
   if (jsonMatch) return jsonMatch[0].trim();
 
   return raw.trim();
 }
 
-/**
- * Parse the raw model output into a validated AIResponse.
- */
 function parseAIResponse(rawContent: string, filename: string): AIResponse {
   const jsonStr = extractJSON(rawContent);
 
@@ -126,37 +282,39 @@ function parseAIResponse(rawContent: string, filename: string): AIResponse {
       parsed,
       zodErrors: validated.error.issues,
     });
-    throw new Error(`Schema validation failed: ${validated.error.issues.map(i => i.message).join(", ")}`);
+    throw new Error(`Schema validation failed: ${validated.error.issues.map((i) => i.message).join(", ")}`);
   }
 
-  // Clamp rating to 1-5
-  validated.data.rating = Math.max(1, Math.min(5, Math.round(validated.data.rating)));
-
-  return validated.data;
+  return {
+    ...validated.data,
+    rating: Math.max(1, Math.min(5, Math.round(validated.data.rating))),
+  };
 }
 
-export async function safeRunCodeReview(diff: string, full_file: string): Promise<AIResponse> {
+export async function safeRunCodeReview(
+  diff: string,
+  fullFile: string,
+  options: CodeReviewOptions = {}
+): Promise<AIResponse> {
   let lastError: unknown;
 
-  // Extract filename from the full_file header for logging
-  const filenameMatch = full_file.match(/File Path:\s*(.+)/);
+  const filenameMatch = fullFile.match(/File Path:\s*(.+)/);
   const filename = filenameMatch ? filenameMatch[1].trim() : "unknown";
+  const settings = await resolveAISettings(options.ownerId);
+  const reviewPrompt = buildReviewPrompt(diff, fullFile);
 
-  logger.info("AI", `Starting review for ${filename}`, { diffLength: diff.length });
+  logger.info("AI", `Starting review for ${filename}`, {
+    diffLength: diff.length,
+    model: settings.model,
+    apiKeySource: settings.apiKeySource,
+    modelSource: settings.modelSource,
+  });
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       logger.debug("AI", `Attempt ${attempt + 1}/${MAX_RETRIES}`, { filename });
 
-      const response = await chain.invoke({ diff, full_file });
-
-      // Extract text content from the response
-      const rawContent =
-        typeof response.content === "string"
-          ? response.content
-          : Array.isArray(response.content)
-            ? response.content.map((c: any) => (typeof c === "string" ? c : c.text || "")).join("")
-            : JSON.stringify(response.content);
+      const rawContent = await callOpenRouter(reviewPrompt, settings);
 
       if (!rawContent || rawContent.trim().length === 0) {
         logger.warn("AI", "Empty response from model", { filename, attempt: attempt + 1 });
@@ -180,7 +338,7 @@ export async function safeRunCodeReview(diff: string, full_file: string): Promis
       return result;
     } catch (err) {
       lastError = err;
-      const errMsg = err instanceof Error ? err.message : String(err);
+      const errMsg = formatOpenRouterError(err);
       logger.error("AI", `Attempt ${attempt + 1}/${MAX_RETRIES} failed`, {
         filename,
         error: errMsg,
@@ -195,10 +353,10 @@ export async function safeRunCodeReview(diff: string, full_file: string): Promis
     }
   }
 
-  const finalErr = lastError instanceof Error ? lastError.message : String(lastError);
+  const finalErr = lastError ? formatOpenRouterError(lastError) : "Unknown error";
   logger.error("AI", "All retry attempts exhausted", { filename, lastError: finalErr });
   return {
-    comment: `⚠️ AI review could not be completed for this file.\n\n**Error:** ${finalErr}\n\nPlease review this file manually.`,
+    comment: `AI review could not be completed for this file.\n\n**Error:** ${finalErr}\n\nPlease review this file manually.`,
     conclusion: "neutral",
     rating: 3,
   };

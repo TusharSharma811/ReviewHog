@@ -5,7 +5,7 @@
 **AI-powered code reviews on every pull request — so you can ship faster with confidence.**
 
 [![GitHub App](https://img.shields.io/badge/GitHub%20App-Install-181717?logo=github&logoColor=white)](https://github.com/apps/reviewhog)
-[![Built with Gemini](https://img.shields.io/badge/Powered%20by-Gemini%202.5-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
+[![Powered by OpenRouter](https://img.shields.io/badge/Powered%20by-OpenRouter%20%2B%20Nemotron-111827)](https://openrouter.ai/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 </div>
@@ -29,7 +29,7 @@ Manual code review doesn't scale. As teams grow and PRs pile up, quality inevita
 
 **ReviewHog** is a GitHub App that plugs directly into your workflow and delivers instant, AI-powered code reviews on every pull request — automatically.
 
-When a PR is opened, ReviewHog analyzes each changed file using **Google Gemini 2.5 Flash**, posts detailed per-file feedback as comments on the PR, and assigns a quality rating based on a strict, well-defined rubric. No setup, no waiting, no context switching.
+When a PR is opened, ReviewHog analyzes each changed file using **OpenRouter with NVIDIA Nemotron 3 Super**, posts detailed per-file feedback as comments on the PR, and assigns a quality rating based on a strict, well-defined rubric. No setup, no waiting, no context switching.
 
 It's like having a senior engineer available 24/7, reviewing every line of code within seconds.
 
@@ -83,7 +83,7 @@ It's like having a senior engineer available 24/7, reviewing every line of code 
 |-------|-----------|
 | **Frontend** | React 19, TypeScript, Tailwind CSS 4, Vite, Framer Motion |
 | **Backend** | Node.js, Express 5, TypeScript |
-| **AI Engine** | Google Gemini 2.5 Flash via LangChain |
+| **AI Engine** | OpenRouter with NVIDIA Nemotron 3 Super |
 | **Database** | PostgreSQL (Neon) with Prisma ORM |
 | **Auth** | GitHub OAuth 2.0 + JWT |
 | **Deployment** | Docker, Render |
@@ -114,8 +114,8 @@ flowchart TB
     end
 
     subgraph AI ["AI Engine"]
-        LC["LangChain"]
-        GM["Gemini 2.5 Flash"]
+        OR["OpenRouter API"]
+        NM["NVIDIA Nemotron 3 Super"]
     end
 
     subgraph Data ["Data Layer"]
@@ -137,9 +137,9 @@ flowchart TB
     SV --> RH
 
     PRH -->|"Fetch Diff"| API
-    PRH -->|"Analyze Code"| LC
-    LC --> GM
-    GM -->|"Review + Rating"| PRH
+    PRH -->|"Analyze Code"| OR
+    OR --> NM
+    NM -->|"Review + Rating"| PRH
     PRH -->|"Post Comments"| API
 
     PRH --> PR_ORM
@@ -179,7 +179,7 @@ flowchart TB
 - PostgreSQL database
 - GitHub OAuth App credentials
 - GitHub App (for webhook integration)
-- Google Gemini API key
+- OpenRouter API key
 
 ### Setup
 
@@ -210,7 +210,8 @@ GITHUB_CLIENT_SECRET=...
 GITHUB_APP_ID=...
 GITHUB_APP_PRIVATE_KEY=...
 GITHUB_WEBHOOK_SECRET=...
-GEMINI_API_KEY=...
+OPENROUTER_API_KEY=...
+OPENROUTER_MODEL=nvidia/nemotron-3-super-120b-a12b:free
 JWT_SECRET=...
 FRONTEND_URL=http://localhost:5173
 ```

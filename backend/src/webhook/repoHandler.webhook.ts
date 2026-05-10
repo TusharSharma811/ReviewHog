@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../db/prismaClient.js";
+import { logger } from "../utils/logger.js";
 import { z } from "zod";
 
 const repoHandlerPayloadSchema = z.object({
@@ -31,7 +32,7 @@ export const repoHandlerWebhook = async (
   try {
     const parsed = repoHandlerPayloadSchema.safeParse(payload);
     if (!parsed.success) {
-      console.error("Invalid repo handler webhook payload:", parsed.error.issues);
+      logger.error("WEBHOOK", "Invalid repo handler webhook payload", { issues: parsed.error.issues });
       return res.status(400).send("Invalid payload");
     }
 
@@ -71,7 +72,7 @@ export const repoHandlerWebhook = async (
 
     res.status(200).send("Webhook received");
   } catch (error) {
-    console.error("Error processing repo handler webhook:", error);
+    logger.error("WEBHOOK", "Error processing repo handler webhook", { error: error instanceof Error ? error.message : String(error) });
     res.status(500).send("Internal Server Error");
   }
 };

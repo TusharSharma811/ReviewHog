@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
+import { logger } from "../utils/logger.js";
 
 export const verifyWebhookSignature = (req: Request, res: Response, next: NextFunction) => {
   const signature = req.headers["x-hub-signature-256"] as string | undefined;
@@ -10,7 +11,7 @@ export const verifyWebhookSignature = (req: Request, res: Response, next: NextFu
 
   const secret = process.env.GITHUB_WEBHOOK_SECRET;
   if (!secret) {
-    console.error("GITHUB_WEBHOOK_SECRET is not configured");
+    logger.error("WEBHOOK", "GITHUB_WEBHOOK_SECRET is not configured");
     return res.status(500).json({ message: "Webhook secret not configured" });
   }
 

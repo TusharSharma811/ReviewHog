@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../db/prismaClient.js";
+import { logger } from "../utils/logger.js";
 import { z } from "zod";
 
 const installationPayloadSchema = z.object({
@@ -29,7 +30,7 @@ export const installationWebhook = async (
   try {
     const parsed = installationPayloadSchema.safeParse(payload);
     if (!parsed.success) {
-      console.error("Invalid installation webhook payload:", parsed.error.issues);
+      logger.error("WEBHOOK", "Invalid installation webhook payload", { issues: parsed.error.issues });
       return res.status(400).send("Invalid payload");
     }
 
@@ -59,7 +60,7 @@ export const installationWebhook = async (
           },
         }).catch((err: Error) => {
           // User might not exist (e.g., never logged in via OAuth)
-          console.warn("User delete failed (may not exist):", err.message);
+          logger.warn("WEBHOOK", "User delete failed (may not exist)", { error: err.message });
         });
         break;
 
@@ -69,7 +70,7 @@ export const installationWebhook = async (
 
     res.status(200).send("Webhook received");
   } catch (error) {
-    console.error("Error processing installation webhook:", error);
+    logger.error("WEBHOOK", "Error processing installation webhook", { error: error instanceof Error ? error.message : String(error) });
     res.status(500).send("Internal Server Error");
   }
 };

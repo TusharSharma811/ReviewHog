@@ -116,7 +116,7 @@ async function computeAvgRating(ownerId: string): Promise<number | null> {
 /**
  * Process the PR review in the background (after webhook has responded 200).
  */
-async function processPullRequest(payload: PullRequestPayload): Promise<void> {
+async function processPullRequest(payload: PullRequestPayload, ownerId: string): Promise<void> {
   const prId = payload.pull_request.id;
   const repoFullName = `${payload.repository.owner.login}/${payload.repository.name}`;
 
@@ -225,7 +225,8 @@ async function processPullRequest(payload: PullRequestPayload): Promise<void> {
       try {
         aiResponse = await safeRunCodeReview(
           file.patch!,
-          `File Path: ${file.filename}\n\n${fileContent}`
+          `File Path: ${file.filename}\n\n${fileContent}`,
+          { ownerId }
         );
         logger.info("WEBHOOK", "AI review received", {
           prId,
@@ -265,7 +266,7 @@ async function processPullRequest(payload: PullRequestPayload): Promise<void> {
         data: {
           reviewId: makeReviewId(payload.pull_request.id.toString(), file.filename),
           repoId: payload.repository.id.toString(),
-          ownerId: payload.repository.owner.id.toString(),
+          ownerId,
           comment: aiResponse.comment,
           rating: aiResponse.rating,
         },
@@ -286,10 +287,10 @@ async function processPullRequest(payload: PullRequestPayload): Promise<void> {
     );
 
     // Compute updated avgRating from all reviews
-    const avgRating = await computeAvgRating(payload.repository.owner.id.toString());
+    const avgRating = await computeAvgRating(ownerId);
 
     await prisma.insight.upsert({
-      where: { ownerId: payload.repository.owner.id.toString() },
+      where: { ownerId },
       update: {
         totalReviews: { increment: reviewableFiles.length },
         totalPRs: { increment: 1 },
@@ -299,7 +300,7 @@ async function processPullRequest(payload: PullRequestPayload): Promise<void> {
         lastReviewAt: new Date(),
       },
       create: {
-        ownerId: payload.repository.owner.id.toString(),
+        ownerId,
         totalReviews: reviewableFiles.length,
         totalPRs: 1,
         avgRating,
@@ -390,7 +391,7 @@ export const pullRequestWebhook = async (
 
     // Run the actual review work asynchronously
     setImmediate(() => {
-      processPullRequest(validPayload).catch((err) => {
+      processPullRequest(validPayload, repoInfo.ownerId).catch((err) => {
         logger.error("WEBHOOK", "Background PR processing crashed", {
           prId: validPayload.pull_request.id,
           error: err instanceof Error ? err.message : String(err),

@@ -13,9 +13,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@langchain/core": "^0.3.66",
-    "@langchain/google-genai": "^0.2.16",
-    "@langchain/openai": "^0.6.4",
     "axios": "^1.11.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -23,11 +20,10 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.2.1",
     "jsonwebtoken": "^9.0.2",
-    "langchain": "^0.3.30",
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@prisma/client": "^7.8.0",
+    "@prisma/client": "^6.13.0",
     "@types/cookie-parser": "^1.4.9",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
@@ -35,7 +31,7 @@
     "i": "^0.3.7",
     "nodemon": "^3.1.10",
     "npm": "^11.14.0",
-    "prisma": "^7.8.0",
+    "prisma": "^6.13.0",
     "ts-node": "^10.9.2",
     "typescript": "~5.8.3"
   }

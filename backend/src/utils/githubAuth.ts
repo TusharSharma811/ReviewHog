@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { logger } from "./logger.js";
 
 export function generateAppJwt(): string {
   if (!process.env.GITHUB_APP_PRIVATE_KEY) {
@@ -27,7 +28,7 @@ export function generateAppJwt(): string {
       { algorithm: "RS256" }
     );
   } catch (error) {
-    console.error("JWT signing failed:", error);
+    logger.error("AUTH", "JWT signing failed", { error: (error as Error).message });
     throw new Error(`Failed to generate JWT: ${(error as Error).message}`);
   }
 }

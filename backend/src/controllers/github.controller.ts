@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import axios from "axios";
 import prisma from "../db/prismaClient.js";
+import { logger } from "../utils/logger.js";
 import { RequestWithUser } from "../types/auth.js";
 
 // ─── GitHub Event Types ─────────────────────────────────────────────────────
@@ -262,7 +263,7 @@ export const getGitHubActivity = async (req: Request, res: Response) => {
       ...stats,
     });
   } catch (error) {
-    console.error("Error fetching GitHub activity:", error);
+    logger.error("GITHUB", "Error fetching GitHub activity", { error: error instanceof Error ? error.message : String(error) });
     res.status(500).json({ message: "Internal server error" });
   }
 };

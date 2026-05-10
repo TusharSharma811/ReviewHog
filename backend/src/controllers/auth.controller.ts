@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import axios from "axios";
 import prisma from "../db/prismaClient.js";
 import { generateJWTToken } from "../utils/jwtTokenGenerator.js";
+import { logger } from "../utils/logger.js";
 import { z } from "zod";
 
 const callbackSchema = z.object({
@@ -34,7 +35,7 @@ export const githubLogin = async (_req: Request, res: Response) => {
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${process.env.GITHUB_REDIRECT_URI}&scope=user:email%20repo`;
     res.redirect(githubAuthUrl);
   } catch (error) {
-    console.error("Error during GitHub login:", error);
+    logger.error("AUTH", "Error during GitHub login", { error: error instanceof Error ? error.message : String(error) });
     res.status(500).send("Internal Server Error");
   }
 };
@@ -124,7 +125,7 @@ export const githubCallback = async (req: Request, res: Response) => {
 
     return res.redirect(redirectUrl);
   } catch (err) {
-    console.error("Callback error:", err);
+    logger.error("AUTH", "Callback error", { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).send("Internal Server Error");
   }
 };

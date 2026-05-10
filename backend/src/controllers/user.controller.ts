@@ -1,5 +1,12 @@
 import { Request, Response } from "express";
 import prisma from "../db/prismaClient.js";
+import { logger } from "../utils/logger.js";
+import {
+  DEFAULT_OPENROUTER_MODEL,
+  encryptAISecret,
+  getDefaultOpenRouterApiKey,
+  getEffectiveOpenRouterModel,
+} from "../utils/aiSettings.js";
 import { z } from "zod";
 import { RequestWithUser } from "../types/auth.js";
 
@@ -73,7 +80,7 @@ export const getUserInsights = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error("Error fetching user insights:", error);
+    logger.error("USER", "Error fetching user insights", { error: error instanceof Error ? error.message : String(error) });
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -117,7 +124,7 @@ export const toggleGithubReview = async (req: Request, res: Response) => {
       isReviewOn: !repo.isReviewOn,
     });
   } catch (error) {
-    console.error("Error toggling GitHub reviews:", error);
+    logger.error("USER", "Error toggling GitHub reviews", { error: error instanceof Error ? error.message : String(error) });
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -172,7 +179,7 @@ export const addRepository = async (req: Request, res: Response) => {
       repo,
     });
   } catch (error) {
-    console.error("Error adding repository:", error);
+    logger.error("USER", "Error adding repository", { error: error instanceof Error ? error.message : String(error) });
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -210,7 +217,116 @@ export const removeRepository = async (req: Request, res: Response) => {
 
     res.status(200).json({ message: "Repository removed successfully" });
   } catch (error) {
-    console.error("Error removing repository:", error);
+    logger.error("USER", "Error removing repository", { error: error instanceof Error ? error.message : String(error) });
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// AI Settings
+
+const updateAISettingsSchema = z.object({
+  apiKey: z.string().max(4096, "API key is too long").optional(),
+  model: z.string().max(200, "Model ID is too long").optional(),
+  useDefaultApiKey: z.boolean().optional().default(false),
+  useDefaultModel: z.boolean().optional().default(false),
+});
+
+const modelIdSchema = z.string()
+  .trim()
+  .min(1, "Model ID is required")
+  .max(200, "Model ID is too long")
+  .regex(/^[a-zA-Z0-9._/:@+-]+$/, "Model ID contains invalid characters");
+
+function serializeAISettings(user: { aiApiKey: string | null; aiModel: string | null }) {
+  return {
+    provider: "OpenRouter",
+    defaultModel: DEFAULT_OPENROUTER_MODEL,
+    model: getEffectiveOpenRouterModel(user.aiModel),
+    customModel: user.aiModel ?? "",
+    hasCustomApiKey: Boolean(user.aiApiKey),
+    usesDefaultApiKey: !user.aiApiKey,
+    usesDefaultModel: !user.aiModel,
+    hasDefaultApiKey: Boolean(getDefaultOpenRouterApiKey()),
+  };
+}
+
+export const getAISettings = async (req: Request, res: Response) => {
+  const userId = (req as RequestWithUser).user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { aiApiKey: true, aiModel: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(serializeAISettings(user));
+  } catch (error) {
+    logger.error("USER", "Error fetching AI settings", { error: error instanceof Error ? error.message : String(error) });
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const updateAISettings = async (req: Request, res: Response) => {
+  const userId = (req as RequestWithUser).user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const parsed = updateAISettingsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: parsed.error.issues[0].message });
+  }
+
+  const { apiKey, model, useDefaultApiKey, useDefaultModel } = parsed.data;
+
+  try {
+    const current = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { aiApiKey: true, aiModel: true },
+    });
+
+    if (!current) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const data: { aiApiKey?: string | null; aiModel?: string | null } = {};
+
+    if (useDefaultApiKey) {
+      data.aiApiKey = null;
+    } else if (typeof apiKey === "string" && apiKey.trim()) {
+      data.aiApiKey = encryptAISecret(apiKey);
+    } else if (useDefaultApiKey === false && !current.aiApiKey && apiKey === "") {
+      return res.status(400).json({ message: "API key is required when default key is disabled" });
+    }
+
+    if (useDefaultModel) {
+      data.aiModel = null;
+    } else if (typeof model === "string") {
+      const modelResult = modelIdSchema.safeParse(model);
+      if (!modelResult.success) {
+        return res.status(400).json({ message: modelResult.error.issues[0].message });
+      }
+      data.aiModel = modelResult.data;
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data,
+      select: { aiApiKey: true, aiModel: true },
+    });
+
+    res.status(200).json(serializeAISettings(updated));
+  } catch (error) {
+    logger.error("USER", "Error updating AI settings", { error: error instanceof Error ? error.message : String(error) });
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -348,7 +464,7 @@ export const getEnhancedMetrics = async (req: Request, res: Response) => {
       })),
     });
   } catch (error) {
-    console.error("Error fetching enhanced metrics:", error);
+    logger.error("USER", "Error fetching enhanced metrics", { error: error instanceof Error ? error.message : String(error) });
     res.status(500).json({ message: "Internal server error" });
   }
 };
