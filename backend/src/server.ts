@@ -33,7 +33,10 @@ const authLimiter = rateLimit({
 
 // --- CORS Origins ---
 function getCorsOrigins(): (string | RegExp)[] {
-  const origins: string[] = [];
+  const origins: string[] = [
+    "https://review-hog.vercel.app",  // Production frontend
+    "http://localhost:5173",           // Local dev
+  ];
 
   if (process.env.FRONTEND_URL) {
     origins.push(process.env.FRONTEND_URL);
@@ -43,12 +46,8 @@ function getCorsOrigins(): (string | RegExp)[] {
     origins.push(...process.env.CORS_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean));
   }
 
-  // Fallback for local dev
-  if (origins.length === 0) {
-    origins.push("http://localhost:5173");
-  }
-
-  return origins;
+  // Deduplicate
+  return [...new Set(origins)];
 }
 
 // --- Middleware ---
