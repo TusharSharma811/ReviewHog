@@ -4,6 +4,7 @@ import { GitHubActivitySection } from "@/components/GitHubActivity";
 import { RecentActivity } from "@/components/RecentActivity";
 import { RepositoryCard } from "@/components/RepositoryCard";
 import { AddRepoModal } from "@/components/AddRepoModal";
+import { AiSettingsPanel } from "@/components/AiSettingsPanel";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
@@ -422,6 +423,7 @@ const Dashboard = () => {
 
           {/* Repository Status */}
           <div className="space-y-6">
+            <AiSettingsPanel />
             <RepositoryCard
               repositories={repositories}
               hasMore={pagination?.hasMoreRepos ?? false}

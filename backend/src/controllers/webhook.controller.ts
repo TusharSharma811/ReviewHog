@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { installationWebhook } from "../webhook/installation.webhook.js";
 import { pullRequestWebhook } from "../webhook/pullRequest.webhook.js";
 import { repoHandlerWebhook } from "../webhook/repoHandler.webhook.js";
+import { logger } from "../utils/logger.js";
 
 export const githubWebhook = async (req: Request, res: Response) => {
   try {
@@ -18,7 +19,7 @@ export const githubWebhook = async (req: Request, res: Response) => {
       res.status(200).send("Event not handled");
     }
   } catch (error) {
-    console.error("Error in githubWebhook:", error);
+    logger.error("WEBHOOK", "Error in githubWebhook", { error: error instanceof Error ? error.message : String(error) });
     res.sendStatus(500);
   }
 };
