@@ -1,6 +1,7 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { z } from "zod";
+import { logger } from "./logger.js";
 
 interface AIResponse {
   comment: string;
@@ -8,31 +9,29 @@ interface AIResponse {
   rating: number;
 }
 
+// ─── Validate API key at startup ────────────────────────────────────────────
+const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+
+if (!apiKey) {
+  logger.error("AI", "No Gemini API key found. Set GEMINI_API_KEY or GOOGLE_API_KEY in .env");
+} else {
+  logger.info("AI", "Gemini API key loaded", { keyPrefix: apiKey.slice(0, 6) + "..." });
+}
+
 const model = new ChatGoogleGenerativeAI({
-  model: "gemini-2.5-flash",
+  model: "gemini-2.5-flash-preview-05-20",
   temperature: 0.7,
-  apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY!,
+  apiKey: apiKey || "missing-key",
 });
 
+// ─── Response validation schema ─────────────────────────────────────────────
 const reviewSchema = z.object({
-  comment: z.string().describe("Detailed, actionable feedback about this specific file. Use markdown formatting."),
-  conclusion: z.enum(["success", "failure", "neutral"]).describe(
-    "success = code is production-ready with no significant issues. " +
-    "failure = code has bugs, security vulnerabilities, or critical problems that MUST be fixed before merging. " +
-    "neutral = code works but has non-blocking suggestions for improvement."
-  ),
-  rating: z.number().min(1).max(5).describe(
-    "Code quality rating on a strict 1-5 scale. " +
-    "1 = Critical issues (security vulnerabilities, data loss risks, broken logic). " +
-    "2 = Major issues (unhandled errors, race conditions, significant performance problems). " +
-    "3 = Moderate issues (missing validation, poor error handling, code smells, no edge case handling). " +
-    "4 = Minor issues (naming conventions, missing comments, minor style issues, small optimizations possible). " +
-    "5 = Excellent (clean, well-structured, follows best practices, no issues found)."
-  ),
+  comment: z.string(),
+  conclusion: z.enum(["success", "failure", "neutral"]),
+  rating: z.number().min(1).max(5),
 });
 
-const structuredModel = model.withStructuredOutput(reviewSchema);
-
+// ─── Prompt (asks for JSON directly instead of using tool-calling) ──────────
 const prompt = ChatPromptTemplate.fromTemplate(`
 You are a Senior Software Engineer performing a thorough, professional code review.
 
@@ -56,6 +55,14 @@ You are a Senior Software Engineer performing a thorough, professional code revi
 
 Ensure your conclusion is consistent with your rating.
 
+## Output Format
+You MUST respond with ONLY a valid JSON object (no markdown fences, no extra text) in this exact format:
+{{
+  "comment": "Your detailed markdown-formatted review here",
+  "conclusion": "success" | "failure" | "neutral",
+  "rating": 1-5
+}}
+
 ---
 
 **Git diff for this file:**
@@ -69,74 +76,130 @@ Ensure your conclusion is consistent with your rating.
 \`\`\`
 `);
 
-const chain = prompt.pipe(structuredModel);
+const chain = prompt.pipe(model);
 
 const MAX_RETRIES = 3;
-const BASE_DELAY_MS = 1000;
+const BASE_DELAY_MS = 2000;
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function isRetryableError(err: unknown): boolean {
-  if (err instanceof Error) {
-    const msg = err.message.toLowerCase();
-    return (
-      msg.includes("429") ||
-      msg.includes("rate limit") ||
-      msg.includes("500") ||
-      msg.includes("503") ||
-      msg.includes("timeout") ||
-      msg.includes("econnreset") ||
-      msg.includes("resource exhausted") ||
-      msg.includes("tool call") ||
-      msg.includes("no parseable") ||
-      msg.includes("failed") ||
-      msg.includes("unavailable")
-    );
+/**
+ * Extract JSON from a model response that might contain markdown fences or extra text.
+ */
+function extractJSON(raw: string): string {
+  // Try to extract from markdown code fences
+  const fenceMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  if (fenceMatch) return fenceMatch[1].trim();
+
+  // Try to find a JSON object directly
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (jsonMatch) return jsonMatch[0].trim();
+
+  return raw.trim();
+}
+
+/**
+ * Parse the raw model output into a validated AIResponse.
+ */
+function parseAIResponse(rawContent: string, filename: string): AIResponse {
+  const jsonStr = extractJSON(rawContent);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch (parseErr) {
+    logger.error("AI", "JSON parse failed", {
+      filename,
+      rawLength: rawContent.length,
+      rawPreview: rawContent.slice(0, 300),
+      error: parseErr instanceof Error ? parseErr.message : String(parseErr),
+    });
+    throw new Error(`JSON parse failed: ${parseErr instanceof Error ? parseErr.message : parseErr}`);
   }
-  return false;
+
+  const validated = reviewSchema.safeParse(parsed);
+  if (!validated.success) {
+    logger.error("AI", "Schema validation failed", {
+      filename,
+      parsed,
+      zodErrors: validated.error.issues,
+    });
+    throw new Error(`Schema validation failed: ${validated.error.issues.map(i => i.message).join(", ")}`);
+  }
+
+  // Clamp rating to 1-5
+  validated.data.rating = Math.max(1, Math.min(5, Math.round(validated.data.rating)));
+
+  return validated.data;
 }
 
 export async function safeRunCodeReview(diff: string, full_file: string): Promise<AIResponse> {
   let lastError: unknown;
 
+  // Extract filename from the full_file header for logging
+  const filenameMatch = full_file.match(/File Path:\s*(.+)/);
+  const filename = filenameMatch ? filenameMatch[1].trim() : "unknown";
+
+  logger.info("AI", `Starting review for ${filename}`, { diffLength: diff.length });
+
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
+      logger.debug("AI", `Attempt ${attempt + 1}/${MAX_RETRIES}`, { filename });
+
       const response = await chain.invoke({ diff, full_file });
 
-      const comment =
-        typeof response?.comment === "string"
-          ? response.comment
-          : "AI did not provide a comment.";
+      // Extract text content from the response
+      const rawContent =
+        typeof response.content === "string"
+          ? response.content
+          : Array.isArray(response.content)
+            ? response.content.map((c: any) => (typeof c === "string" ? c : c.text || "")).join("")
+            : JSON.stringify(response.content);
 
-      const conclusion =
-        ["success", "failure", "neutral"].includes(response?.conclusion || "")
-          ? response.conclusion as "success" | "failure" | "neutral"
-          : "neutral";
+      if (!rawContent || rawContent.trim().length === 0) {
+        logger.warn("AI", "Empty response from model", { filename, attempt: attempt + 1 });
+        throw new Error("Empty response from model");
+      }
 
-      const rawRating =
-        typeof response?.rating === "number"
-          ? response.rating
-          : Number(response?.rating) || 3;
+      logger.debug("AI", "Raw response received", {
+        filename,
+        contentLength: rawContent.length,
+        preview: rawContent.slice(0, 200),
+      });
 
-      // Clamp rating to 1-5 range
-      const rating = Math.max(1, Math.min(5, Math.round(rawRating)));
+      const result = parseAIResponse(rawContent, filename);
 
-      return { comment, conclusion, rating };
+      logger.info("AI", `Review complete for ${filename}`, {
+        rating: result.rating,
+        conclusion: result.conclusion,
+        commentLength: result.comment.length,
+      });
+
+      return result;
     } catch (err) {
       lastError = err;
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.error(`❌ AI invocation failed (attempt ${attempt + 1}/${MAX_RETRIES}): ${errMsg}`);
+      logger.error("AI", `Attempt ${attempt + 1}/${MAX_RETRIES} failed`, {
+        filename,
+        error: errMsg,
+        stack: err instanceof Error ? err.stack?.split("\n").slice(0, 3).join(" | ") : undefined,
+      });
 
-      if (attempt < MAX_RETRIES - 1 && isRetryableError(err)) {
+      if (attempt < MAX_RETRIES - 1) {
         const delay = BASE_DELAY_MS * Math.pow(2, attempt);
-        console.log(`⏳ Retrying in ${delay}ms...`);
+        logger.info("AI", `Retrying in ${delay}ms...`, { filename });
         await sleep(delay);
       }
     }
   }
 
-  console.error("❌ All AI retry attempts exhausted:", lastError);
-  return { comment: "AI review failed after multiple attempts.", conclusion: "neutral", rating: 3 };
+  const finalErr = lastError instanceof Error ? lastError.message : String(lastError);
+  logger.error("AI", "All retry attempts exhausted", { filename, lastError: finalErr });
+  return {
+    comment: `⚠️ AI review could not be completed for this file.\n\n**Error:** ${finalErr}\n\nPlease review this file manually.`,
+    conclusion: "neutral",
+    rating: 3,
+  };
 }
