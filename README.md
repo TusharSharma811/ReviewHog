@@ -90,6 +90,88 @@ It's like having a senior engineer available 24/7, reviewing every line of code 
 
 ---
 
+## 🏗️ Architecture
+
+```mermaid
+flowchart TB
+    subgraph GitHub
+        PR["Pull Request Opened"]
+        OA["OAuth 2.0"]
+        API["GitHub REST API"]
+    end
+
+    subgraph Backend ["Backend · Express + TypeScript"]
+        WH["Webhook Controller"]
+        SV["Signature Verification\n(HMAC SHA-256)"]
+        PRH["PR Webhook Handler"]
+        IH["Installation Handler"]
+        RH["Repo Handler"]
+        AC["Auth Controller"]
+        UC["User Controller"]
+        GC["GitHub Controller"]
+        JWT["JWT Auth Middleware"]
+        RL["Rate Limiter"]
+    end
+
+    subgraph AI ["AI Engine"]
+        LC["LangChain"]
+        GM["Gemini 2.5 Flash"]
+    end
+
+    subgraph Data ["Data Layer"]
+        DB[("PostgreSQL\n(Neon)")]
+        PR_ORM["Prisma ORM"]
+    end
+
+    subgraph Frontend ["Frontend · React + Vite"]
+        LP["Landing Page"]
+        DASH["Dashboard"]
+        REPO["Repo Manager"]
+        METRICS["Review Metrics"]
+    end
+
+    PR -->|"Webhook Event"| WH
+    WH --> SV
+    SV --> PRH
+    SV --> IH
+    SV --> RH
+
+    PRH -->|"Fetch Diff"| API
+    PRH -->|"Analyze Code"| LC
+    LC --> GM
+    GM -->|"Review + Rating"| PRH
+    PRH -->|"Post Comments"| API
+
+    PRH --> PR_ORM
+    IH --> PR_ORM
+    RH --> PR_ORM
+    PR_ORM --> DB
+
+    OA -->|"Auth Code"| AC
+    AC -->|"Exchange Token"| API
+    AC -->|"Issue JWT"| Frontend
+
+    JWT --> UC
+    JWT --> GC
+    UC --> PR_ORM
+    GC --> API
+
+    LP -->|"Login with GitHub"| OA
+    DASH --> UC
+    REPO --> GC
+    METRICS --> UC
+
+    RL -.->|"Protects"| Backend
+
+    style GitHub fill:#161b22,stroke:#58a6ff,color:#c9d1d9
+    style Backend fill:#1a1a2e,stroke:#7c3aed,color:#e2e8f0
+    style AI fill:#0f2027,stroke:#00c6ff,color:#e2e8f0
+    style Data fill:#1a1a1a,stroke:#f59e0b,color:#e2e8f0
+    style Frontend fill:#1a1a2e,stroke:#10b981,color:#e2e8f0
+```
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
