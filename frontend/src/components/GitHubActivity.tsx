@@ -226,15 +226,13 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
                 const height = maxDaily > 0 ? (day.count / maxDaily) * 100 : 0;
                 return (
                   <div key={day.date} className="flex-1 flex flex-col items-center gap-1 group">
-                    <span className="text-[10px] font-medium text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[10px] font-medium text-foreground">
                       {day.count}
                     </span>
                     <div
-                      className="w-full rounded-t-md bg-blue-100 group-hover:bg-blue-300 transition-colors relative"
+                      className="w-full rounded-t-md bg-blue-500 group-hover:bg-blue-600 transition-colors"
                       style={{ height: `${Math.max(height, 3)}%` }}
-                    >
-                      <div className="absolute inset-0 rounded-t-md bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
+                    />
                     <span className="text-[8px] text-muted-foreground leading-tight hidden sm:block">
                       {day.label.split(",")[0].split(" ")[0]}
                     </span>
