@@ -11,7 +11,7 @@ interface AIResponse {
 const model = new ChatGoogleGenerativeAI({
   model: "gemini-2.5-flash",
   temperature: 0.7,
-  apiKey: process.env.GEMINI_API_KEY!,
+  apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY!,
 });
 
 const reviewSchema = z.object({
@@ -88,7 +88,11 @@ function isRetryableError(err: unknown): boolean {
       msg.includes("503") ||
       msg.includes("timeout") ||
       msg.includes("econnreset") ||
-      msg.includes("resource exhausted")
+      msg.includes("resource exhausted") ||
+      msg.includes("tool call") ||
+      msg.includes("no parseable") ||
+      msg.includes("failed") ||
+      msg.includes("unavailable")
     );
   }
   return false;
@@ -122,7 +126,8 @@ export async function safeRunCodeReview(diff: string, full_file: string): Promis
       return { comment, conclusion, rating };
     } catch (err) {
       lastError = err;
-      console.error(`❌ AI invocation failed (attempt ${attempt + 1}/${MAX_RETRIES}):`, err);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error(`❌ AI invocation failed (attempt ${attempt + 1}/${MAX_RETRIES}): ${errMsg}`);
 
       if (attempt < MAX_RETRIES - 1 && isRetryableError(err)) {
         const delay = BASE_DELAY_MS * Math.pow(2, attempt);
