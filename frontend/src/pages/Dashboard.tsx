@@ -203,6 +203,17 @@ const Dashboard = () => {
     };
   }, [fetchData, fetchMetrics, fetchActivity, isNewUser, searchParams]);
 
+  // Auto-refresh all dashboard data every 30 seconds
+  useEffect(() => {
+    const refreshInterval = setInterval(() => {
+      fetchData(1, true);
+      fetchMetrics();
+      fetchActivity();
+    }, 30000);
+
+    return () => clearInterval(refreshInterval);
+  }, [fetchData, fetchMetrics, fetchActivity]);
+
   const handleLogout = () => {
     // Stop any active polling
     if (pollIntervalRef.current) {
