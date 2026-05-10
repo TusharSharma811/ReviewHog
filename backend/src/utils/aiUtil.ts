@@ -16,6 +16,13 @@ interface AIResponse {
   rating: number;
 }
 
+export interface PullRequestReviewFile {
+  filename: string;
+  status: string;
+  patch: string;
+  fullContent: string;
+}
+
 interface CodeReviewOptions {
   ownerId?: string | null;
 }
@@ -39,6 +46,7 @@ interface OpenRouterChatResponse {
 }
 
 const requestTimeoutMs = Number(process.env.AI_REQUEST_TIMEOUT_MS || 60000);
+const maxOutputTokens = Number(process.env.AI_MAX_TOKENS || 3200);
 
 logger.info("AI", "OpenRouter configured", {
   defaultModel: DEFAULT_OPENROUTER_MODEL,
@@ -56,7 +64,7 @@ const openRouterReviewSchema = {
   properties: {
     comment: {
       type: "string",
-      description: "Markdown-formatted code review feedback for the changed file.",
+      description: "Markdown-formatted code review feedback for the changed code.",
     },
     conclusion: {
       type: "string",
@@ -117,6 +125,72 @@ Full file content for reference:
 \`\`\`
 ${fullFile}
 \`\`\`
+`.trim();
+}
+
+function escapeFence(value: string): string {
+  return value.replace(/```/g, "``\\`");
+}
+
+function formatPullRequestFiles(files: PullRequestReviewFile[]): string {
+  return files
+    .map((file, index) => `
+## File ${index + 1}: ${file.filename}
+Status: ${file.status}
+
+Diff:
+\`\`\`diff
+${escapeFence(file.patch)}
+\`\`\`
+
+Full file content:
+\`\`\`
+${escapeFence(file.fullContent)}
+\`\`\`
+`.trim())
+    .join("\n\n---\n\n");
+}
+
+function buildPullRequestReviewPrompt(files: PullRequestReviewFile[]): string {
+  return `
+You are a Senior Software Engineer performing a single pull request code review.
+
+## Instructions
+- Review ALL changed files shown below as one pull request.
+- Produce ONE GitHub pull request comment that summarizes the complete change set.
+- Focus on changed code, using full file content only for context.
+- Include a concise overall summary, important risks or bugs, and per-file notes only where they add value.
+- Be specific and actionable; reference file paths, variable names, function names, and changed behavior where possible.
+- If there are no blocking issues, say so clearly.
+- Do not write separate comments per file.
+
+## Rating Criteria
+- 5/5 Excellent: Clean, idiomatic code. Proper error handling, good naming, follows project patterns. No issues.
+- 4/5 Good: Works correctly with minor style/convention suggestions. No functional problems.
+- 3/5 Acceptable: Functions correctly but has notable code smells, missing validation, weak error handling, or lacks edge case coverage.
+- 2/5 Needs Work: Has real bugs, unhandled errors, race conditions, or significant performance issues that should be fixed.
+- 1/5 Critical: Contains security vulnerabilities, data loss risks, broken logic, or injection vectors. Must not be merged.
+
+## Conclusion Criteria
+- success: The PR is production-ready. Rating should be 4-5.
+- neutral: The PR works but could be improved. Rating should be 3.
+- failure: The PR has problems that must be fixed. Rating should be 1-2.
+
+Ensure your conclusion is consistent with your rating.
+
+## Output Format
+Respond with ONLY a valid JSON object. Do not include markdown fences or extra text.
+{
+  "comment": "Your single markdown-formatted PR review comment here",
+  "conclusion": "neutral",
+  "rating": 3
+}
+
+---
+
+Changed files:
+
+${formatPullRequestFiles(files)}
 `.trim();
 }
 
@@ -222,7 +296,7 @@ async function callOpenRouter(prompt: string, settings: ResolvedAISettings): Pro
         },
       },
       temperature: 0.2,
-      max_tokens: 1800,
+      max_tokens: Number.isFinite(maxOutputTokens) ? maxOutputTokens : 3200,
     },
     {
       timeout: Number.isFinite(requestTimeoutMs) ? requestTimeoutMs : 60000,
@@ -291,20 +365,24 @@ function parseAIResponse(rawContent: string, filename: string): AIResponse {
   };
 }
 
-export async function safeRunCodeReview(
-  diff: string,
-  fullFile: string,
-  options: CodeReviewOptions = {}
-): Promise<AIResponse> {
+async function runReviewPrompt({
+  reviewPrompt,
+  logTarget,
+  inputLength,
+  options,
+  fallbackComment,
+}: {
+  reviewPrompt: string;
+  logTarget: string;
+  inputLength: number;
+  options: CodeReviewOptions;
+  fallbackComment: (error: string) => string;
+}): Promise<AIResponse> {
   let lastError: unknown;
-
-  const filenameMatch = fullFile.match(/File Path:\s*(.+)/);
-  const filename = filenameMatch ? filenameMatch[1].trim() : "unknown";
   const settings = await resolveAISettings(options.ownerId);
-  const reviewPrompt = buildReviewPrompt(diff, fullFile);
 
-  logger.info("AI", `Starting review for ${filename}`, {
-    diffLength: diff.length,
+  logger.info("AI", `Starting review for ${logTarget}`, {
+    inputLength,
     model: settings.model,
     apiKeySource: settings.apiKeySource,
     modelSource: settings.modelSource,
@@ -312,24 +390,24 @@ export async function safeRunCodeReview(
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      logger.debug("AI", `Attempt ${attempt + 1}/${MAX_RETRIES}`, { filename });
+      logger.debug("AI", `Attempt ${attempt + 1}/${MAX_RETRIES}`, { target: logTarget });
 
       const rawContent = await callOpenRouter(reviewPrompt, settings);
 
       if (!rawContent || rawContent.trim().length === 0) {
-        logger.warn("AI", "Empty response from model", { filename, attempt: attempt + 1 });
+        logger.warn("AI", "Empty response from model", { target: logTarget, attempt: attempt + 1 });
         throw new Error("Empty response from model");
       }
 
       logger.debug("AI", "Raw response received", {
-        filename,
+        target: logTarget,
         contentLength: rawContent.length,
         preview: rawContent.slice(0, 200),
       });
 
-      const result = parseAIResponse(rawContent, filename);
+      const result = parseAIResponse(rawContent, logTarget);
 
-      logger.info("AI", `Review complete for ${filename}`, {
+      logger.info("AI", `Review complete for ${logTarget}`, {
         rating: result.rating,
         conclusion: result.conclusion,
         commentLength: result.comment.length,
@@ -340,24 +418,63 @@ export async function safeRunCodeReview(
       lastError = err;
       const errMsg = formatOpenRouterError(err);
       logger.error("AI", `Attempt ${attempt + 1}/${MAX_RETRIES} failed`, {
-        filename,
+        target: logTarget,
         error: errMsg,
         stack: err instanceof Error ? err.stack?.split("\n").slice(0, 3).join(" | ") : undefined,
       });
 
       if (attempt < MAX_RETRIES - 1) {
         const delay = BASE_DELAY_MS * Math.pow(2, attempt);
-        logger.info("AI", `Retrying in ${delay}ms...`, { filename });
+        logger.info("AI", `Retrying in ${delay}ms...`, { target: logTarget });
         await sleep(delay);
       }
     }
   }
 
   const finalErr = lastError ? formatOpenRouterError(lastError) : "Unknown error";
-  logger.error("AI", "All retry attempts exhausted", { filename, lastError: finalErr });
+  logger.error("AI", "All retry attempts exhausted", { target: logTarget, lastError: finalErr });
   return {
-    comment: `AI review could not be completed for this file.\n\n**Error:** ${finalErr}\n\nPlease review this file manually.`,
+    comment: fallbackComment(finalErr),
     conclusion: "neutral",
     rating: 3,
   };
+}
+
+export async function safeRunCodeReview(
+  diff: string,
+  fullFile: string,
+  options: CodeReviewOptions = {}
+): Promise<AIResponse> {
+  const filenameMatch = fullFile.match(/File Path:\s*(.+)/);
+  const filename = filenameMatch ? filenameMatch[1].trim() : "unknown";
+  const reviewPrompt = buildReviewPrompt(diff, fullFile);
+
+  return runReviewPrompt({
+    reviewPrompt,
+    logTarget: filename,
+    inputLength: diff.length,
+    options,
+    fallbackComment: (error) =>
+      `ReviewHog could not generate an AI review for this file.\n\nPlease review this file manually.\n\n**Error:** ${error}`,
+  });
+}
+
+export async function safeRunPullRequestReview(
+  files: PullRequestReviewFile[],
+  options: CodeReviewOptions = {}
+): Promise<AIResponse> {
+  const reviewPrompt = buildPullRequestReviewPrompt(files);
+  const inputLength = files.reduce(
+    (total, file) => total + file.patch.length + file.fullContent.length,
+    0
+  );
+
+  return runReviewPrompt({
+    reviewPrompt,
+    logTarget: `pull request (${files.length} files)`,
+    inputLength,
+    options,
+    fallbackComment: (error) =>
+      `ReviewHog could not generate a complete AI summary for this pull request.\n\nPlease review the changes manually before merging.\n\n**Error:** ${error}`,
+  });
 }

@@ -68,8 +68,15 @@ export const getUserInsights = async (req: Request, res: Response) => {
       prisma.review.count({ where: { ownerId: userId } }),
     ]);
 
+    const {
+      githubToken: _githubToken,
+      aiApiKey: _aiApiKey,
+      aiModel: _aiModel,
+      ...safeUserData
+    } = userData;
+
     res.status(200).json({
-      ...userData,
+      ...safeUserData,
       pagination: {
         page,
         limit,
@@ -163,6 +170,11 @@ export const addRepository = async (req: Request, res: Response) => {
       return res.status(409).json({ message: "Repository already connected" });
     }
 
+    const userSettings = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { defaultRepoReviewOn: true },
+    });
+
     const repo = await prisma.repo.create({
       data: {
         name,
@@ -170,7 +182,7 @@ export const addRepository = async (req: Request, res: Response) => {
         language,
         url,
         ownerId: userId,
-        isReviewOn: false, // AI reviews need GitHub App installed
+        isReviewOn: userSettings?.defaultRepoReviewOn ?? true,
       },
     });
 
@@ -332,6 +344,73 @@ export const updateAISettings = async (req: Request, res: Response) => {
 };
 
 // ─── Enhanced Metrics ───────────────────────────────────────────────────────
+
+// Review Settings
+
+const updateReviewSettingsSchema = z.object({
+  aiReviewsEnabled: z.boolean().optional(),
+  defaultRepoReviewOn: z.boolean().optional(),
+});
+
+function serializeReviewSettings(user: {
+  aiReviewsEnabled: boolean;
+  defaultRepoReviewOn: boolean;
+}) {
+  return {
+    aiReviewsEnabled: user.aiReviewsEnabled,
+    defaultRepoReviewOn: user.defaultRepoReviewOn,
+  };
+}
+
+export const getReviewSettings = async (req: Request, res: Response) => {
+  const userId = (req as RequestWithUser).user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { aiReviewsEnabled: true, defaultRepoReviewOn: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(serializeReviewSettings(user));
+  } catch (error) {
+    logger.error("USER", "Error fetching review settings", { error: error instanceof Error ? error.message : String(error) });
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const updateReviewSettings = async (req: Request, res: Response) => {
+  const userId = (req as RequestWithUser).user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const parsed = updateReviewSettingsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: parsed.error.issues[0].message });
+  }
+
+  try {
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: parsed.data,
+      select: { aiReviewsEnabled: true, defaultRepoReviewOn: true },
+    });
+
+    res.status(200).json(serializeReviewSettings(updated));
+  } catch (error) {
+    logger.error("USER", "Error updating review settings", { error: error instanceof Error ? error.message : String(error) });
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 export const getEnhancedMetrics = async (req: Request, res: Response) => {
   const userId = (req as RequestWithUser).user?.id;

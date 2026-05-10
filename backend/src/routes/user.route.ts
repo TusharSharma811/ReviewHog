@@ -8,6 +8,8 @@ import {
   getEnhancedMetrics,
   getAISettings,
   updateAISettings,
+  getReviewSettings,
+  updateReviewSettings,
 } from "../controllers/user.controller.js";
 import { getGitHubActivity } from "../controllers/github.controller.js";
 
@@ -18,6 +20,8 @@ router.get("/me/metrics", verifyJWT, getEnhancedMetrics);
 router.get("/me/github-activity", verifyJWT, getGitHubActivity);
 router.get("/me/ai-settings", verifyJWT, getAISettings);
 router.put("/me/ai-settings", verifyJWT, updateAISettings);
+router.get("/me/review-settings", verifyJWT, getReviewSettings);
+router.put("/me/review-settings", verifyJWT, updateReviewSettings);
 router.post("/repos", verifyJWT, addRepository);
 router.delete("/repos/:repoId", verifyJWT, removeRepository);
 router.post("/github/toggleReview/:repoId", verifyJWT, toggleGithubReview);
