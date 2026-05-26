@@ -1,9 +1,10 @@
-import { Star, ChevronDown } from "lucide-react";
+import { Star, ChevronDown, ExternalLink } from "lucide-react";
 
 interface Review {
   id: string;
   comment?: string | null;
   rating?: number | null;
+  prUrl?: string | null;
   createdAt: string;
   repo?: {
     id: string;
@@ -39,7 +40,7 @@ function renderStars(rating: number | null | undefined) {
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}
-          className={`h-3 w-3 ${i < clamped ? "text-amber-400 fill-amber-400" : "text-gray-200"}`}
+          className={`h-3.5 w-3.5 ${i < clamped ? "text-amber-400 fill-amber-400" : "text-gray-200"}`}
         />
       ))}
     </div>
@@ -66,24 +67,41 @@ export const RecentActivity = ({ recentActivities, hasMore = false, onLoadMore }
                   : review.repo.name
                 : "Unknown repo";
 
+              const Wrapper = review.prUrl ? "a" : "div";
+              const wrapperProps = review.prUrl
+                ? {
+                    href: review.prUrl,
+                    target: "_blank" as const,
+                    rel: "noopener noreferrer",
+                  }
+                : {};
+
               return (
-                <div
+                <Wrapper
                   key={review.id}
-                  className="p-4 rounded-xl bg-gray-50/80 hover:bg-gray-100/80 transition-colors"
+                  {...wrapperProps}
+                  className={`block p-4 rounded-xl bg-gray-50/80 hover:bg-gray-100/80 transition-colors ${
+                    review.prUrl ? "cursor-pointer group" : ""
+                  }`}
                 >
-                  <div className="flex items-start justify-between mb-1.5">
-                    <span className="text-sm font-medium text-foreground">{repoName}</span>
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base font-semibold text-foreground">{repoName}</span>
+                      {review.prUrl && (
+                        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      )}
+                    </div>
                     <span className="text-xs text-muted-foreground shrink-0 ml-2">
                       {timeAgo(review.createdAt)}
                     </span>
                   </div>
                   {review.comment && (
-                    <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                      {review.comment.substring(0, 200)}
+                    <p className="text-sm text-muted-foreground line-clamp-2 mb-2 leading-relaxed">
+                      {review.comment.substring(0, 250)}
                     </p>
                   )}
                   {renderStars(review.rating)}
-                </div>
+                </Wrapper>
               );
             })}
             {hasMore && onLoadMore && (
@@ -100,4 +118,4 @@ export const RecentActivity = ({ recentActivities, hasMore = false, onLoadMore }
       </div>
     </div>
   );
-};
+};

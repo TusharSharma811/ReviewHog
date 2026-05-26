@@ -69,6 +69,7 @@ model Review {
   rating      Int?
   comment     String?
   approved    Boolean   @default(false)
+  prUrl       String?
 
   // V2 pipeline metadata
   riskScore       Int?

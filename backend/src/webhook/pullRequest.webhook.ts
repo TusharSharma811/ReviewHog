@@ -107,6 +107,7 @@ const pullRequestPayloadSchema = z.object({
     comments_url: z.string().url(),
     diff_url: z.string().url(),
     url: z.string().url(),
+    html_url: z.string().url().optional(),
   }),
   repository: z.object({
     id: z.number(),
@@ -356,6 +357,7 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
         ownerId,
         comment: commentBody,
         rating: aiResponse.rating,
+        prUrl: payload.pull_request.html_url ?? null,
         pipelineVersion: USE_V2_PIPELINE ? "v2" : "v1",
       },
     });

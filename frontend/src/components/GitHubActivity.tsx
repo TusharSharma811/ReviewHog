@@ -91,7 +91,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
           </div>
           <p className="text-xs font-medium text-muted-foreground">Pushes</p>
           <p className="text-2xl font-bold text-foreground">{pushes?.thisWeek ?? 0}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {pushes?.thisMonth ?? 0} this month
           </p>
         </div>
@@ -103,7 +103,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
           </div>
           <p className="text-xs font-medium text-muted-foreground">Commits</p>
           <p className="text-2xl font-bold text-foreground">{commits?.thisWeek ?? 0}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {commits?.thisMonth ?? 0} this month
           </p>
         </div>
@@ -115,7 +115,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
           </div>
           <p className="text-xs font-medium text-muted-foreground">PRs Opened</p>
           <p className="text-2xl font-bold text-foreground">{prsOpened?.thisWeek ?? 0}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {prsOpened?.thisMonth ?? 0} this month
           </p>
         </div>
@@ -127,7 +127,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
           </div>
           <p className="text-xs font-medium text-muted-foreground">PRs Closed</p>
           <p className="text-2xl font-bold text-foreground">{prsMerged?.thisWeek ?? 0}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {prsMerged?.thisMonth ?? 0} this month
           </p>
         </div>
@@ -139,7 +139,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
           </div>
           <p className="text-xs font-medium text-muted-foreground">Issues</p>
           <p className="text-2xl font-bold text-foreground">{issuesOpened?.thisWeek ?? 0}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {issuesOpened?.thisMonth ?? 0} this month
           </p>
         </div>
@@ -151,7 +151,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
           </div>
           <p className="text-xs font-medium text-muted-foreground">Branches</p>
           <p className="text-2xl font-bold text-foreground">{branches?.thisMonth ?? 0}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">created this month</p>
+          <p className="text-xs text-muted-foreground mt-0.5">created this month</p>
         </div>
       </div>
 
@@ -221,19 +221,19 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
             <span className="text-xs text-muted-foreground">Last 14 days</span>
           </div>
           {dailyPushes && dailyPushes.length > 0 ? (
-            <div className="flex items-end gap-1.5 h-28">
+            <div className="flex items-end gap-1.5 h-36">
               {dailyPushes.map((day) => {
                 const height = maxDaily > 0 ? (day.count / maxDaily) * 100 : 0;
                 return (
                   <div key={day.date} className="flex-1 flex flex-col items-center gap-1 group">
-                    <span className="text-[10px] font-medium text-foreground">
+                    <span className="text-sm font-semibold text-foreground">
                       {day.count}
                     </span>
                     <div
                       className="w-full rounded-t-md bg-blue-500 group-hover:bg-blue-600 transition-colors"
                       style={{ height: `${Math.max(height, 3)}%` }}
                     />
-                    <span className="text-[8px] text-muted-foreground leading-tight hidden sm:block">
+                    <span className="text-xs text-muted-foreground leading-tight hidden sm:block font-medium">
                       {day.label.split(",")[0].split(" ")[0]}
                     </span>
                   </div>
