@@ -162,12 +162,12 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
             <h3 className="text-lg font-semibold text-foreground">Review Activity</h3>
             <span className="text-xs text-muted-foreground">Last 7 days</span>
           </div>
-          <div className="flex items-end gap-2 h-32">
+          <div className="flex items-end gap-2 h-40">
             {dailyActivity.map((day) => {
               const height = maxDaily > 0 ? (day.count / maxDaily) * 100 : 0;
               return (
                 <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-xs font-medium text-foreground">{day.count}</span>
+                  <span className="text-sm font-semibold text-foreground">{day.count}</span>
                   <div
                     className="w-full rounded-t-lg bg-indigo-100 hover:bg-indigo-200 transition-colors relative group"
                     style={{ height: `${Math.max(height, 4)}%` }}
@@ -176,7 +176,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
                       className="absolute inset-0 rounded-t-lg bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"
                     />
                   </div>
-                  <span className="text-[10px] text-muted-foreground">{day.label}</span>
+                  <span className="text-xs text-muted-foreground font-medium">{day.label}</span>
                 </div>
               );
             })}
