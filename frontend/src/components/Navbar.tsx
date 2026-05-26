@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, Menu, X } from "lucide-react";
+import { ArrowRight, Menu, X, Github } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import LOGO from "../assets/Gemini_Generated_Image_azcybkazcybkazcy-removebg-preview.png";
 
@@ -8,75 +8,90 @@ interface NavbarProps {
   isLoading: boolean;
 }
 
+const NAV_LINKS = [
+  { label: "Home", href: "#", id: "nav-home" },
+  { label: "Features", href: "#features", id: "nav-features" },
+];
+
 export function Navbar({ onGetStarted, isLoading }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <>
+      {/* ─── Liquid Glass Navbar ─── */}
       <motion.nav
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="fixed top-5 left-1/2 z-50 w-[95%] max-w-5xl -translate-x-1/2 rounded-full glass-nav"
+        className="lg-navbar"
+        id="main-nav"
       >
-        <div className="flex h-14 items-center justify-between px-6">
-          {/* Logo */}
-          <a href="/" className="flex items-center gap-2.5">
-            <img src={LOGO} alt="ReviewHog Logo" className="h-8 w-8" />
-            <span className="text-base font-bold tracking-tight text-foreground">
-              ReviewHog
-            </span>
-          </a>
-
-          {/* Desktop Links */}
-          <div className="hidden items-center gap-8 md:flex">
-            <a
-              href="#features"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Features
-            </a>
-            <a
-              href="#how-it-works"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              How it Works
-            </a>
-            <a
-              href="https://github.com/TusharSharma811/ReviewHog"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              GitHub
-            </a>
-          </div>
-
-          {/* Desktop CTA */}
-          <div className="hidden md:block">
-            <button
-              onClick={onGetStarted}
-              disabled={isLoading}
-              className="group inline-flex cursor-pointer items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90 disabled:opacity-50"
-            >
-              Get Started
-              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-            </button>
-          </div>
-
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="inline-flex items-center justify-center rounded-lg p-2 text-foreground md:hidden"
-            aria-label="Toggle menu"
+        {/* Logo */}
+        <a
+          href="/"
+          className="flex items-center gap-2.5 mr-6 no-underline"
+          id="nav-logo"
+        >
+          <img src={LOGO} alt="ReviewHog Logo" className="h-7 w-7" />
+          <span
+            className="text-[22px] font-bold tracking-[-0.5px] text-[#111] whitespace-nowrap"
+            style={{ fontFamily: "'Fustat', sans-serif" }}
           >
-            {mobileOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-          </button>
-        </div>
+            ReviewHog
+          </span>
+        </a>
+
+        {/* Desktop Nav Links */}
+        <ul className="hidden md:flex items-center gap-1 list-none m-0 p-0">
+          {NAV_LINKS.map((link) => (
+            <li key={link.id}>
+              <a
+                href={link.href}
+                id={link.id}
+                className="text-sm font-medium text-[#555] px-4 py-2 rounded-[10px] transition-colors no-underline hover:text-[#111] hover:bg-black/5 whitespace-nowrap"
+              >
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+
+        {/* Desktop — GitHub Source Button */}
+        <a
+          href="https://github.com/TusharSharma811/ReviewHog"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hidden md:inline-flex lg-glass-btn"
+          id="nav-github"
+        >
+          <Github className="h-3.5 w-3.5" />
+          GitHub
+        </a>
+
+        {/* Desktop Sign Up Button */}
+        <button
+          onClick={onGetStarted}
+          disabled={isLoading}
+          className="hidden md:inline-flex lg-glass-btn"
+          id="nav-signup"
+          style={{ background: "rgba(0, 0, 0, 0.85)", color: "#fff", border: "none" }}
+        >
+          {isLoading ? "Connecting…" : "Get Started"}
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+
+        {/* Mobile hamburger */}
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="md:hidden ml-auto inline-flex items-center justify-center rounded-lg p-2 text-[#333] bg-transparent border-none cursor-pointer"
+          aria-label="Toggle menu"
+        >
+          {mobileOpen ? (
+            <X className="h-5 w-5" />
+          ) : (
+            <Menu className="h-5 w-5" />
+          )}
+        </button>
       </motion.nav>
 
       {/* Mobile menu overlay */}
@@ -87,41 +102,47 @@ export function Navbar({ onGetStarted, isLoading }: NavbarProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="fixed top-24 left-1/2 z-40 w-[90%] max-w-sm -translate-x-1/2 rounded-2xl border border-border bg-white p-6 shadow-xl md:hidden"
+            className="fixed top-24 left-1/2 z-40 w-[90%] max-w-sm -translate-x-1/2 rounded-2xl p-5 md:hidden"
+            style={{
+              background: "rgba(255, 255, 255, 0.85)",
+              backdropFilter: "blur(40px)",
+              WebkitBackdropFilter: "blur(40px)",
+              border: "1px solid rgba(0, 0, 0, 0.08)",
+              borderRadius: "14px",
+              boxShadow: "0 12px 40px rgba(0, 0, 0, 0.08)",
+            }}
           >
-            <div className="flex flex-col gap-4">
-              <a
-                href="#features"
-                onClick={() => setMobileOpen(false)}
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Features
-              </a>
-              <a
-                href="#how-it-works"
-                onClick={() => setMobileOpen(false)}
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                How it Works
-              </a>
+            <div className="flex flex-col gap-1">
+              {NAV_LINKS.map((link) => (
+                <a
+                  key={link.id}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="text-sm font-medium text-[#555] px-4 py-3 rounded-[10px] transition-colors no-underline hover:text-[#111] hover:bg-black/5"
+                >
+                  {link.label}
+                </a>
+              ))}
               <a
                 href="https://github.com/TusharSharma811/ReviewHog"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 text-sm font-medium text-[#555] px-4 py-3 rounded-[10px] transition-colors no-underline hover:text-[#111] hover:bg-black/5"
               >
+                <Github className="h-4 w-4" />
                 GitHub
               </a>
-              <hr className="border-border" />
+              <hr className="border-[#e5e7eb] my-2" />
               <button
                 onClick={() => {
                   setMobileOpen(false);
                   onGetStarted();
                 }}
                 disabled={isLoading}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90 disabled:opacity-50"
+                className="lg-cta justify-center text-sm py-3"
               >
-                Get Started
+                {isLoading ? "Connecting…" : "Get Started"}
                 <ArrowRight className="h-3.5 w-3.5" />
               </button>
             </div>
