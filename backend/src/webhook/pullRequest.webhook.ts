@@ -6,8 +6,12 @@ import {
   safeRunPullRequestReview,
   type PullRequestReviewFile,
 } from "../utils/aiUtil.js";
+import { runReviewPipeline } from "../pipeline/index.js";
+import type { PRContext, PRFile } from "../pipeline/types.js";
 import { logger } from "../utils/logger.js";
 import { z } from "zod";
+
+const USE_V2_PIPELINE = process.env.REVIEW_PIPELINE_VERSION === "v2";
 
 // Files that should never be reviewed because they produce noisy feedback.
 const SKIP_EXTENSIONS = new Set([
@@ -247,29 +251,95 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
     );
 
     let aiResponse: AIResponse;
-    try {
-      aiResponse = await safeRunPullRequestReview(reviewFiles, { ownerId });
-      logger.info("WEBHOOK", "AI PR review received", {
-        prId,
-        rating: aiResponse.rating,
-        conclusion: aiResponse.conclusion,
-        filesReviewed: reviewFiles.length,
-      });
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      logger.error("WEBHOOK", "AI PR review threw unexpected error", {
-        prId,
-        error: errMsg,
-        stack: err instanceof Error ? err.stack : undefined,
-      });
-      aiResponse = {
-        comment: `ReviewHog could not generate a complete AI summary for this pull request.\n\nPlease review the changes manually before merging.\n\n**Error:** ${errMsg}`,
-        conclusion: "neutral",
-        rating: 3,
-      };
+
+    // ── V2 Pipeline ─────────────────────────────────────────────────
+    if (USE_V2_PIPELINE) {
+      try {
+        const prContext: PRContext = {
+          prId,
+          repoFullName,
+          prTitle: "",
+          prBody: "",
+          baseBranch: "",
+          headSha: payload.pull_request.head.sha,
+          ownerId,
+          installationId: payload.installation.id,
+          commentsUrl: payload.pull_request.comments_url,
+          prUrl: payload.pull_request.url,
+        };
+
+        const prFiles: PRFile[] = reviewFiles.map((f) => ({
+          filename: f.filename,
+          status: f.status,
+          patch: f.patch,
+          fullContent: f.fullContent,
+          contents_url: "",
+        }));
+
+        const pipelineResult = await runReviewPipeline(prContext, prFiles);
+
+        aiResponse = {
+          comment: pipelineResult.summary,
+          conclusion: pipelineResult.conclusion,
+          rating: pipelineResult.rating,
+        };
+
+        logger.info("WEBHOOK", "V2 pipeline review complete", {
+          prId,
+          rating: pipelineResult.rating,
+          conclusion: pipelineResult.conclusion,
+          riskScore: pipelineResult.riskScore,
+          findingsCount: pipelineResult.findings.length,
+          processingTimeMs: pipelineResult.stats.processingTimeMs,
+        });
+      } catch (v2Err) {
+        logger.error("WEBHOOK", "V2 pipeline failed, falling back to v1", {
+          prId,
+          error: v2Err instanceof Error ? v2Err.message : String(v2Err),
+          stack: v2Err instanceof Error ? v2Err.stack : undefined,
+        });
+
+        // Fall back to v1
+        try {
+          aiResponse = await safeRunPullRequestReview(reviewFiles, { ownerId });
+        } catch (v1Err) {
+          const errMsg = v1Err instanceof Error ? v1Err.message : String(v1Err);
+          aiResponse = {
+            comment: `ReviewHog could not generate a complete AI summary for this pull request.\n\nPlease review the changes manually before merging.\n\n**Error:** ${errMsg}`,
+            conclusion: "neutral",
+            rating: 3,
+          };
+        }
+      }
+    } else {
+      // ── V1 Pipeline (original) ──────────────────────────────────────
+      try {
+        aiResponse = await safeRunPullRequestReview(reviewFiles, { ownerId });
+        logger.info("WEBHOOK", "V1 AI PR review received", {
+          prId,
+          rating: aiResponse.rating,
+          conclusion: aiResponse.conclusion,
+          filesReviewed: reviewFiles.length,
+        });
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        logger.error("WEBHOOK", "AI PR review threw unexpected error", {
+          prId,
+          error: errMsg,
+          stack: err instanceof Error ? err.stack : undefined,
+        });
+        aiResponse = {
+          comment: `ReviewHog could not generate a complete AI summary for this pull request.\n\nPlease review the changes manually before merging.\n\n**Error:** ${errMsg}`,
+          conclusion: "neutral",
+          rating: 3,
+        };
+      }
     }
 
-    const commentBody = buildPullRequestComment(aiResponse, reviewFiles, skippedFiles);
+    // V2 pipeline produces a self-contained summary; v1 needs wrapping
+    const commentBody = USE_V2_PIPELINE
+      ? aiResponse.comment
+      : buildPullRequestComment(aiResponse, reviewFiles, skippedFiles);
 
     await axios.post(
       payload.pull_request.comments_url,
@@ -277,7 +347,7 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
       { headers }
     );
 
-    logger.debug("WEBHOOK", "Single PR review comment posted", { prId });
+    logger.debug("WEBHOOK", "PR review comment posted", { prId, pipeline: USE_V2_PIPELINE ? "v2" : "v1" });
 
     await prisma.review.create({
       data: {
@@ -286,6 +356,7 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
         ownerId,
         comment: commentBody,
         rating: aiResponse.rating,
+        pipelineVersion: USE_V2_PIPELINE ? "v2" : "v1",
       },
     });
 

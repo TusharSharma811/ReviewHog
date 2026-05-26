@@ -34,13 +34,13 @@ model Repo {
   name        String
   description String?
   url         String     @unique
-  language    String?     
+  language    String?
   stars       Int        @default(0)
   forks       Int        @default(0)
   owner       User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId     String
-  reviews     Review[]   
-  isReviewOn Boolean    @default(false) 
+  reviews     Review[]
+  isReviewOn Boolean    @default(false)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 }
@@ -63,12 +63,24 @@ model Review {
   id          String    @id @default(cuid())
   owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId     String
-  reviewId   String    @unique
+  reviewId    String    @unique
   repo        Repo      @relation(fields: [repoId], references: [id], onDelete: Cascade)
   repoId      String
-  rating      Int?      
-  comment     String?   
-  approved    Boolean   @default(false) // if PR was approved
+  rating      Int?
+  comment     String?
+  approved    Boolean   @default(false)
+
+  // V2 pipeline metadata
+  riskScore       Int?
+  findingsCount   Int       @default(0)
+  criticalCount   Int       @default(0)
+  highCount       Int       @default(0)
+  tokensUsed      Int       @default(0)
+  processingMs    Int       @default(0)
+  reviewersUsed   String[]
+  pipelineVersion String    @default("v1")
+  findingsJson    Json?
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
