@@ -114,13 +114,36 @@ function hasHighRiskContent(patch: string): boolean {
   return HIGH_RISK_PATTERNS.some((p) => p.test(patch));
 }
 
+/**
+ * Counts how many distinct high-risk patterns appear in the diff.
+ * Used to distinguish files with a single risky call ("high") from
+ * files with many security-sensitive operations ("critical").
+ *
+ * Example: a file with SQL queries + subprocess + pickle + hardcoded
+ * secrets would score 4+, triggering "critical" classification which
+ * routes it to the premium AI model and enables all reviewers.
+ */
+function countHighRiskPatterns(patch: string): number {
+  return HIGH_RISK_PATTERNS.filter((p) => p.test(patch)).length;
+}
+
 function computeRiskTier(file: PRFile, category: FileCategory): RiskTier {
   // Always critical: auth, database migrations, middleware
   if (["auth", "middleware"].includes(category)) return "critical";
   if (category === "database" && /migration/i.test(file.filename)) return "critical";
 
+  // FIX: Files whose paths don't match category rules (e.g. a standalone
+  // Python script) were previously classified as "medium" business-logic,
+  // even if they contained SQL injection, subprocess calls, and hardcoded
+  // secrets. Now we count how many risk patterns match:
+  //   - 3+ matches → critical (premium model + all reviewers)
+  //   - 1-2 matches → high (standard model + security reviewer)
+  //   - 0 matches  → fall through to path-based classification below
+  const riskPatternCount = countHighRiskPatterns(file.patch);
+  if (riskPatternCount >= 3) return "critical";
+
   // High-risk content in any file bumps to at least high
-  if (hasHighRiskContent(file.patch)) return "high";
+  if (riskPatternCount > 0) return "high";
 
   // API routes are high risk
   if (category === "api-route") return "high";

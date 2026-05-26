@@ -365,6 +365,18 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
     const issuesInPR = aiResponse.conclusion === "failure" ? 1 : 0;
     const passesInPR = aiResponse.conclusion === "success" ? 1 : 0;
 
+    // Determine a descriptive check run title based on review results
+    // so the GitHub Checks tab shows at-a-glance severity information.
+    // "failure" conclusion makes the check show a red ❌ in the PR.
+    let checkRunTitle = "AI code review complete";
+    if (USE_V2_PIPELINE && aiResponse.conclusion === "failure") {
+      checkRunTitle = "❌ Critical/High issues found — review required before merge";
+    } else if (USE_V2_PIPELINE && aiResponse.conclusion === "neutral") {
+      checkRunTitle = "⚠️ Minor issues found — review recommended";
+    } else if (aiResponse.conclusion === "success") {
+      checkRunTitle = "✅ No issues found — safe to merge";
+    }
+
     await axios.patch(
       `https://api.github.com/repos/${repoFullName}/check-runs/${checkRunId}`,
       {
@@ -373,7 +385,7 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
         status: "completed",
         conclusion: aiResponse.conclusion,
         output: {
-          title: "AI code review complete",
+          title: checkRunTitle,
           summary: commentBody.slice(0, GITHUB_COMMENT_LIMIT),
         },
       },

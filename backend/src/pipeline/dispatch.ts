@@ -30,15 +30,24 @@ const REVIEWER_PROMPTS: Record<ReviewerType, string> = {
 
 /**
  * Determines which reviewers to run based on the chunk's content.
- * Correctness always runs. Security runs on high-risk categories.
+ *
+ * Correctness reviewer always runs on every chunk.
+ *
+ * Security reviewer is triggered via THREE independent signals (any one suffices):
+ *   1. Category-based:  File path matches a sensitive category (auth, api, db, middleware)
+ *   2. Content-based:   Diff contains security patterns (SQL, eval, subprocess, secrets, etc.)
+ *   3. Risk-tier-based: Classifier assigned "high" or "critical" risk
+ *
+ * Why all three? Files can be security-sensitive without having a recognizable path.
+ * For example, a standalone `app.py` with SQL injection + pickle deserialization + hardcoded
+ * secrets gets categorized as "business-logic" by path, but the content + risk tier signals
+ * correctly trigger the security reviewer.
  */
 function selectReviewers(chunk: ReviewChunk): ReviewerType[] {
   const reviewers: ReviewerType[] = ["correctness"];
 
-  // Determine all categories in this chunk
+  // ── Signal 1: Category-based (file path matches a sensitive pattern) ──
   const categories = new Set(chunk.files.map((f) => f.category));
-
-  // Security reviewer for sensitive code
   const securityCategories = new Set([
     "auth",
     "api-route",
@@ -49,7 +58,35 @@ function selectReviewers(chunk: ReviewChunk): ReviewerType[] {
     securityCategories.has(c)
   );
 
-  if (hasSecurityRelevant || chunk.maxRiskTier === "critical") {
+  // ── Signal 2: Content-based (diff contains security-sensitive code) ──
+  // These patterns catch dangerous operations regardless of file path or category.
+  // This is the fallback for files not matched by category rules above.
+  const SECURITY_CONTENT_PATTERNS = [
+    /\beval\s*\(/,                       // Dynamic code execution
+    /\bexec\s*\(/,                       // Command/code execution
+    /subprocess|child_process/,          // OS command execution
+    /pickle\.|deserializ/i,             // Unsafe deserialization (Python pickle, etc.)
+    /sql|query|execute.*\(/i,            // Database queries (potential injection)
+    /password|secret|api[_-]?key|token/i, // Credential/secret handling
+    /crypto|hash|bcrypt|argon/i,         // Cryptographic operations
+    /redirect|open\s*\(/i,              // Open redirects, file access
+    /innerHTML|dangerouslySetInnerHTML/i, // XSS vectors
+    /\bshell\s*[:=]\s*true/,            // Shell execution flags
+  ];
+
+  const hasSecurityContent = chunk.files.some((f) =>
+    SECURITY_CONTENT_PATTERNS.some((p) => p.test(f.patch))
+  );
+
+  // ── Signal 3: Risk-tier-based (classifier flagged the file as risky) ──
+  // High/critical risk means the classifier detected multiple danger signals
+  // or the file touches a sensitive area. Security review is warranted.
+  if (
+    hasSecurityRelevant ||
+    hasSecurityContent ||
+    chunk.maxRiskTier === "critical" ||
+    chunk.maxRiskTier === "high"
+  ) {
     reviewers.push("security");
   }
 
