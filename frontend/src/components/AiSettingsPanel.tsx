@@ -114,7 +114,7 @@ export const AiSettingsPanel = () => {
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-white">
+    <div className="rounded-2xl border border-border bg-card">
       <div className="px-6 py-5 border-b border-border flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-lg font-semibold text-foreground">AI Settings</h3>
@@ -122,7 +122,7 @@ export const AiSettingsPanel = () => {
             {settings?.provider ?? "OpenRouter"}
           </p>
         </div>
-        <div className="h-9 w-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+        <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
           <SlidersHorizontal className="h-4 w-4 text-foreground" />
         </div>
       </div>
@@ -155,7 +155,7 @@ export const AiSettingsPanel = () => {
                 <label htmlFor="openrouter-api-key" className="text-sm font-medium text-foreground">
                   OpenRouter API key
                 </label>
-                <div className="flex items-center gap-2 rounded-lg border border-border bg-gray-50 px-3 py-2">
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2">
                   <KeyRound className="h-4 w-4 text-muted-foreground shrink-0" />
                   <input
                     id="openrouter-api-key"
@@ -195,12 +195,12 @@ export const AiSettingsPanel = () => {
                   value={model}
                   onChange={(event) => setModel(event.target.value)}
                   placeholder="provider/model-name"
-                  className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:border-foreground"
+                  className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-foreground"
                 />
               </div>
             )}
 
-            <div className="rounded-xl bg-gray-50 px-4 py-3">
+            <div className="rounded-xl bg-muted px-4 py-3">
               <p className="text-xs font-medium text-muted-foreground">Active model</p>
               <p className="text-sm text-foreground break-all">
                 {useDefaultModel ? settings?.defaultModel : model || settings?.model}

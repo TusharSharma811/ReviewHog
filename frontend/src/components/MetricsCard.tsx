@@ -9,9 +9,9 @@ interface MetricsCardProps {
 
 export const MetricsCard = ({ title, value, icon: Icon, description }: MetricsCardProps) => {
   return (
-    <div className="card-hover rounded-2xl border border-border bg-white p-6">
+    <div className="card-hover rounded-2xl border border-border bg-card p-6">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
           <Icon className="h-5 w-5 text-indigo-500" />
         </div>
       </div>

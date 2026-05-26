@@ -47,7 +47,7 @@ export default function ToggleSwitch({ repoId, initialChecked = true }: ToggleSw
       <div
         className={`relative w-11 h-6 rounded-full
           transition-colors duration-200
-          ${checked ? "bg-foreground" : "bg-gray-300"}
+          ${checked ? "bg-foreground" : "bg-muted-foreground/40"}
           after:content-[''] after:absolute after:top-0.5 after:left-[2px]
           after:bg-white after:rounded-full after:h-5 after:w-5
           after:transition-all after:duration-200 after:shadow-sm

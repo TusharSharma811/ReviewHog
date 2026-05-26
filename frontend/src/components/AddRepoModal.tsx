@@ -49,13 +49,13 @@ export const AddRepoModal = ({ isOpen, onClose, onAdd }: AddRepoModalProps) => {
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md rounded-2xl bg-white border border-border shadow-xl">
+      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <h3 className="text-lg font-semibold text-foreground">Add Repository</h3>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+            className="p-1 rounded-lg hover:bg-muted transition-colors cursor-pointer"
           >
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
@@ -73,11 +73,11 @@ export const AddRepoModal = ({ isOpen, onClose, onAdd }: AddRepoModalProps) => {
               placeholder="owner/repository"
               value={name}
               onChange={(e) => { setName(e.target.value); setError(null); }}
-              className="w-full h-10 px-3 rounded-xl border border-border bg-gray-50/50 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-foreground/30 transition-all"
+              className="w-full h-10 px-3 rounded-xl border border-border bg-muted/50 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-foreground/30 transition-all"
               autoFocus
             />
             <p className="text-xs text-muted-foreground">
-              Enter the GitHub repository in <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">owner/repo</code> format
+              Enter the GitHub repository in <code className="bg-muted px-1 py-0.5 rounded text-xs">owner/repo</code> format
             </p>
           </div>
 
@@ -91,7 +91,7 @@ export const AddRepoModal = ({ isOpen, onClose, onAdd }: AddRepoModalProps) => {
               placeholder="A brief description..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full h-10 px-3 rounded-xl border border-border bg-gray-50/50 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-foreground/30 transition-all"
+              className="w-full h-10 px-3 rounded-xl border border-border bg-muted/50 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-foreground/30 transition-all"
             />
           </div>
 
@@ -113,7 +113,7 @@ export const AddRepoModal = ({ isOpen, onClose, onAdd }: AddRepoModalProps) => {
             <button
               type="button"
               onClick={onClose}
-              className="h-9 px-4 rounded-full text-sm font-medium border border-border bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+              className="h-9 px-4 rounded-full text-sm font-medium border border-border bg-card hover:bg-muted transition-colors cursor-pointer"
             >
               Cancel
             </button>

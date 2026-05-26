@@ -42,6 +42,44 @@
   --sidebar-ring: #000000;
 }
 
+.dark {
+  /* ─── Premium Dark Theme ─── */
+  --background: #0b0f1a;
+  --foreground: #e2e8f0;
+  --card: #111827;
+  --card-foreground: #e2e8f0;
+  --popover: #111827;
+  --popover-foreground: #e2e8f0;
+  --primary: #e2e8f0;
+  --primary-foreground: #0b0f1a;
+  --secondary: #1e293b;
+  --secondary-foreground: #e2e8f0;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #1e293b;
+  --accent-foreground: #e2e8f0;
+  --destructive: #ef4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #1e293b;
+  --input: #1e293b;
+  --ring: #6366f1;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --chart-1: #818cf8;
+  --chart-2: #34d399;
+  --chart-3: #fbbf24;
+  --chart-4: #f87171;
+  --chart-5: #a78bfa;
+  --sidebar: #111827;
+  --sidebar-foreground: #e2e8f0;
+  --sidebar-primary: #e2e8f0;
+  --sidebar-primary-foreground: #0b0f1a;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #e2e8f0;
+  --sidebar-border: #1e293b;
+  --sidebar-ring: #6366f1;
+}
+
 @theme inline {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', monospace;
@@ -134,6 +172,11 @@
     0 4px 6px rgba(0, 0, 0, 0.04),
     0 10px 40px rgba(0, 0, 0, 0.08);
 }
+.dark .card-hover:hover {
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.2),
+    0 10px 40px rgba(0, 0, 0, 0.4);
+}
 
 /* Terminal styling for light theme */
 .terminal-light {
@@ -142,6 +185,13 @@
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.04),
     0 8px 32px rgba(0, 0, 0, 0.06);
+}
+.dark .terminal-light {
+  background: #111827;
+  border: 1px solid #1e293b;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 /* Smooth scroll */

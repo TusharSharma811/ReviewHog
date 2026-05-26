@@ -53,7 +53,7 @@ class ErrorBoundary extends Component<Props, State> {
                                 An unexpected error occurred in the application.
                             </p>
                             {this.state.error && (
-                                <p className="text-xs text-muted-foreground/70 font-mono mt-2 p-3 bg-gray-50 rounded-xl border border-border">
+                                <p className="text-xs text-muted-foreground/70 font-mono mt-2 p-3 bg-muted rounded-xl border border-border">
                                     {this.state.error.message}
                                 </p>
                             )}
@@ -67,7 +67,7 @@ class ErrorBoundary extends Component<Props, State> {
                             </button>
                             <a
                                 href="/"
-                                className="inline-flex items-center justify-center rounded-full text-sm font-medium border border-border bg-white hover:bg-gray-50 h-10 px-6 transition-colors"
+                                className="inline-flex items-center justify-center rounded-full text-sm font-medium border border-border bg-card hover:bg-muted h-10 px-6 transition-colors"
                             >
                                 Go Home
                             </a>

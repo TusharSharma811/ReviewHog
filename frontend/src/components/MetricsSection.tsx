@@ -1,4 +1,7 @@
 import { GitPullRequest, Bug, CheckCircle, TrendingUp, Clock } from "lucide-react";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from "recharts";
 
 interface MetricsData {
   overview: {
@@ -55,7 +58,7 @@ function qualityColor(score: number | null): string {
 }
 
 function qualityBgColor(score: number | null): string {
-  if (score === null) return "bg-gray-50";
+  if (score === null) return "bg-muted";
   if (score >= 80) return "bg-emerald-50";
   if (score >= 60) return "bg-amber-50";
   return "bg-red-50";
@@ -67,10 +70,10 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
       <div className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="rounded-2xl border border-border bg-white p-6 animate-pulse">
-              <div className="h-10 w-10 rounded-xl bg-gray-100 mb-4" />
-              <div className="h-4 w-20 bg-gray-100 rounded mb-2" />
-              <div className="h-8 w-16 bg-gray-100 rounded" />
+            <div key={i} className="rounded-2xl border border-border bg-card p-6 animate-pulse">
+              <div className="h-10 w-10 rounded-xl bg-muted mb-4" />
+              <div className="h-4 w-20 bg-muted rounded mb-2" />
+              <div className="h-8 w-16 bg-muted rounded" />
             </div>
           ))}
         </div>
@@ -80,7 +83,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
 
   if (!metrics) {
     return (
-      <div className="rounded-2xl border border-border bg-white p-8 text-center">
+      <div className="rounded-2xl border border-border bg-card p-8 text-center">
         <TrendingUp className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
         <p className="text-sm text-muted-foreground">
           No metrics data available yet. Reviews will appear here once PRs are analyzed.
@@ -90,14 +93,13 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
   }
 
   const { overview, severityBreakdown, dailyActivity, topRepos } = metrics;
-  const maxDaily = Math.max(...dailyActivity.map((d) => d.count), 1);
 
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {/* Total Reviews */}
-        <div className="card-hover rounded-2xl border border-border bg-white p-6">
+        <div className="card-hover rounded-2xl border border-border bg-card p-6">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 mb-4">
             <GitPullRequest className="h-5 w-5 text-indigo-500" />
           </div>
@@ -109,7 +111,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
         </div>
 
         {/* Issues Found */}
-        <div className="card-hover rounded-2xl border border-border bg-white p-6">
+        <div className="card-hover rounded-2xl border border-border bg-card p-6">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 mb-4">
             <Bug className="h-5 w-5 text-red-500" />
           </div>
@@ -121,7 +123,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
         </div>
 
         {/* Clean Passes */}
-        <div className="card-hover rounded-2xl border border-border bg-white p-6">
+        <div className="card-hover rounded-2xl border border-border bg-card p-6">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 mb-4">
             <CheckCircle className="h-5 w-5 text-emerald-500" />
           </div>
@@ -133,7 +135,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
         </div>
 
         {/* Quality Score */}
-        <div className="card-hover rounded-2xl border border-border bg-white p-6">
+        <div className="card-hover rounded-2xl border border-border bg-card p-6">
           <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${qualityBgColor(overview.qualityScore)} mb-4`}>
             <TrendingUp className={`h-5 w-5 ${qualityColor(overview.qualityScore)}`} />
           </div>
@@ -157,34 +159,65 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
       {/* Activity Chart + Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Daily Activity Chart */}
-        <div className="lg:col-span-2 rounded-2xl border border-border bg-white p-6">
+        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-foreground">Review Activity</h3>
             <span className="text-xs text-muted-foreground">Last 7 days</span>
           </div>
-          <div className="flex items-end gap-2 h-40">
-            {dailyActivity.map((day) => {
-              const height = maxDaily > 0 ? (day.count / maxDaily) * 100 : 0;
-              return (
-                <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-sm font-semibold text-foreground">{day.count}</span>
-                  <div
-                    className="w-full rounded-t-lg bg-indigo-100 hover:bg-indigo-200 transition-colors relative group"
-                    style={{ height: `${Math.max(height, 4)}%` }}
-                  >
-                    <div
-                      className="absolute inset-0 rounded-t-lg bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    />
-                  </div>
-                  <span className="text-xs text-muted-foreground font-medium">{day.label}</span>
-                </div>
-              );
-            })}
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={dailyActivity} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="reviewGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 500 }}
+                  dy={8}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: '#94a3b8' }}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1e293b',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '10px 14px',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+                  }}
+                  labelStyle={{ color: '#94a3b8', fontSize: 11, marginBottom: 4 }}
+                  itemStyle={{ color: '#e2e8f0', fontWeight: 600, fontSize: 13 }}
+                  cursor={{ stroke: '#6366f1', strokeWidth: 1, strokeDasharray: '4 4' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="count"
+                  name="Reviews"
+                  stroke="#6366f1"
+                  strokeWidth={2.5}
+                  fill="url(#reviewGradient)"
+                  dot={{ r: 4, fill: '#6366f1', stroke: '#fff', strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: '#6366f1', stroke: '#fff', strokeWidth: 2.5 }}
+                  animationDuration={800}
+                  animationEasing="ease-out"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
         {/* Severity Breakdown */}
-        <div className="rounded-2xl border border-border bg-white p-6">
+        <div className="rounded-2xl border border-border bg-card p-6">
           <h3 className="text-lg font-semibold text-foreground mb-6">Severity Breakdown</h3>
           <div className="space-y-4">
             {(() => {
@@ -203,7 +236,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
                       <span className="text-emerald-600 font-medium">Clean (4-5★)</span>
                       <span className="text-muted-foreground">{severityBreakdown.clean}</span>
                     </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                         style={{ width: `${(severityBreakdown.clean / total) * 100}%` }}
@@ -215,7 +248,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
                       <span className="text-amber-600 font-medium">Moderate (3★)</span>
                       <span className="text-muted-foreground">{severityBreakdown.neutral}</span>
                     </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-amber-400 rounded-full transition-all duration-500"
                         style={{ width: `${(severityBreakdown.neutral / total) * 100}%` }}
@@ -227,7 +260,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
                       <span className="text-red-500 font-medium">Issues (1-2★)</span>
                       <span className="text-muted-foreground">{severityBreakdown.issues}</span>
                     </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-red-500 rounded-full transition-all duration-500"
                         style={{ width: `${(severityBreakdown.issues / total) * 100}%` }}
@@ -243,7 +276,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
 
       {/* Top Repos */}
       {topRepos.length > 0 && (
-        <div className="rounded-2xl border border-border bg-white p-6">
+        <div className="rounded-2xl border border-border bg-card p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-foreground">Most Active Repos</h3>
             {overview.lastReviewAt && (
@@ -272,7 +305,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
                           {repo.reviewCount} review{repo.reviewCount !== 1 ? "s" : ""}
                         </span>
                       </div>
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
                           className="h-full bg-indigo-400 rounded-full transition-all duration-500"
                           style={{ width: `${(repo.reviewCount / maxCount) * 100}%` }}

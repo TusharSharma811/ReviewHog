@@ -1,4 +1,4 @@
-import { Loader2, ExternalLink, LogOut, RefreshCw, Settings as SettingsIcon } from "lucide-react";
+import { Loader2, ExternalLink, LogOut, RefreshCw, Settings as SettingsIcon, Sun, Moon } from "lucide-react";
 import { MetricsSection } from "@/components/MetricsSection";
 import { GitHubActivitySection } from "@/components/GitHubActivity";
 import { RecentActivity } from "@/components/RecentActivity";
@@ -9,7 +9,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
 import { toast } from "sonner";
 import { setToken, removeToken, getToken, authFetch } from "@/lib/auth";
-import LOGO from "../assets/Gemini_Generated_Image_azcybkazcybkazcy-removebg-preview.png";
+import { useTheme } from "@/lib/useTheme";
+import LOGO from "../assets/47509314-ae8b-44c2-b8c0-5d5a8a7ff228.png";
 
 interface Pagination {
   page: number;
@@ -61,6 +62,7 @@ const GITHUB_APP_INSTALL_URL = "https://github.com/apps/reviewhog/installations/
 const Dashboard = () => {
   const [searchParams] = useSearchParams();
   const isNewUser = searchParams.get("new") === "true";
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -335,11 +337,11 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-white">
+      <header className="border-b border-border bg-card">
         <div className="container mx-auto px-4 md:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <img src={LOGO} alt="ReviewHog Logo" className="h-8 w-8" />
+              <img src={LOGO} alt="ReviewHog Logo" className="h-8 w-8 rounded-lg" />
               <div>
                 <h1 className="text-lg font-semibold text-foreground">ReviewHog</h1>
                 <p className="text-sm text-muted-foreground">
@@ -347,21 +349,28 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-1.5 text-sm text-emerald-600">
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1.5 text-sm text-emerald-600 mr-2">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                 <span className="hidden sm:inline font-medium">Active</span>
               </div>
               <button
+                onClick={toggleTheme}
+                className="inline-flex items-center justify-center rounded-full text-sm font-medium border border-border bg-card hover:bg-muted h-9 w-9 transition-colors cursor-pointer"
+                title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
+              <button
                 onClick={() => navigate("/settings")}
-                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-white hover:bg-gray-50 h-9 px-4 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-card hover:bg-muted h-9 px-4 transition-colors cursor-pointer"
               >
                 <SettingsIcon className="h-4 w-4" />
                 <span className="hidden sm:inline">Settings</span>
               </button>
               <button
                 onClick={handleLogout}
-                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-white hover:bg-gray-50 h-9 px-4 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-card hover:bg-muted h-9 px-4 transition-colors cursor-pointer"
               >
                 <LogOut className="h-4 w-4" />
                 <span className="hidden sm:inline">Logout</span>

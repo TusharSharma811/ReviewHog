@@ -45,7 +45,7 @@ export const RepositoryCard = ({
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
 
   return (
-    <div className="rounded-2xl border border-border bg-white">
+    <div className="rounded-2xl border border-border bg-card">
       <div className="px-6 py-5 border-b border-border flex items-center justify-between">
         <h3 className="text-lg font-semibold text-foreground">Repositories</h3>
         {onAddRepo && (
@@ -84,7 +84,7 @@ export const RepositoryCard = ({
               return (
                 <div
                   key={repo.id}
-                  className="flex items-start justify-between p-4 rounded-xl bg-gray-50/80 hover:bg-gray-100/80 transition-colors"
+                  className="flex items-start justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
                 >
                   <div className="space-y-1.5 flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{repoName}</p>
@@ -130,7 +130,7 @@ export const RepositoryCard = ({
                             </button>
                             <button
                               onClick={() => setConfirmingDelete(null)}
-                              className="text-xs font-medium text-muted-foreground hover:text-foreground bg-gray-100 hover:bg-gray-200 rounded-lg px-2 py-1 transition-colors cursor-pointer"
+                              className="text-xs font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/80 rounded-lg px-2 py-1 transition-colors cursor-pointer"
                             >
                               Cancel
                             </button>

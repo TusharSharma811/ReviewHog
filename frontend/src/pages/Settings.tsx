@@ -6,7 +6,7 @@ import { ReviewSettingsPanel } from "@/components/ReviewSettingsPanel";
 import { API_BASE_URL } from "@/config";
 import { authFetch, getToken, removeToken } from "@/lib/auth";
 import { toast } from "sonner";
-import LOGO from "../assets/Gemini_Generated_Image_azcybkazcybkazcy-removebg-preview.png";
+import LOGO from "../assets/47509314-ae8b-44c2-b8c0-5d5a8a7ff228.png";
 
 interface UserData {
   name?: string;
@@ -73,7 +73,7 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-white">
+      <header className="border-b border-border bg-card">
         <div className="container mx-auto px-4 md:px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center space-x-3 min-w-0">
@@ -88,14 +88,14 @@ const Settings = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate("/dashboard")}
-                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-white hover:bg-gray-50 h-9 px-4 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-card hover:bg-muted h-9 px-4 transition-colors cursor-pointer"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span className="hidden sm:inline">Dashboard</span>
               </button>
               <button
                 onClick={handleLogout}
-                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-white hover:bg-gray-50 h-9 px-4 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-card hover:bg-muted h-9 px-4 transition-colors cursor-pointer"
               >
                 <LogOut className="h-4 w-4" />
                 <span className="hidden sm:inline">Logout</span>
@@ -107,7 +107,7 @@ const Settings = () => {
 
       <main className="container mx-auto px-4 md:px-6 py-8">
         <div className="mb-8 flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-white border border-border flex items-center justify-center">
+          <div className="h-10 w-10 rounded-lg bg-card border border-border flex items-center justify-center">
             <SettingsIcon className="h-5 w-5 text-foreground" />
           </div>
           <div>
@@ -123,7 +123,7 @@ const Settings = () => {
           </div>
 
           <div className="space-y-8">
-            <div className="rounded-2xl border border-border bg-white">
+            <div className="rounded-2xl border border-border bg-card">
               <div className="px-6 py-5 border-b border-border flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <h3 className="text-lg font-semibold text-foreground">Account</h3>
@@ -132,19 +132,19 @@ const Settings = () => {
                 {userData?.avatarUrl ? (
                   <img src={userData.avatarUrl} alt="" className="h-9 w-9 rounded-full shrink-0" />
                 ) : (
-                  <div className="h-9 w-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                  <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
                     <User className="h-4 w-4 text-foreground" />
                   </div>
                 )}
               </div>
               <div className="p-6 space-y-3">
-                <div className="rounded-xl bg-gray-50 px-4 py-3">
+                <div className="rounded-xl bg-muted px-4 py-3">
                   <p className="text-xs font-medium text-muted-foreground">GitHub user</p>
                   <p className="text-sm text-foreground truncate">{userData?.name ?? "Connected"}</p>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-white hover:bg-gray-50 h-10 px-4 text-sm font-medium transition-colors cursor-pointer"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card hover:bg-muted h-10 px-4 text-sm font-medium transition-colors cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
                   Logout
@@ -152,13 +152,13 @@ const Settings = () => {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-border bg-white">
+            <div className="rounded-2xl border border-border bg-card">
               <div className="px-6 py-5 border-b border-border flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <h3 className="text-lg font-semibold text-foreground">GitHub App</h3>
                   <p className="text-sm text-muted-foreground truncate">Repository access</p>
                 </div>
-                <div className="h-9 w-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
                   <Github className="h-4 w-4 text-foreground" />
                 </div>
               </div>
@@ -174,7 +174,7 @@ const Settings = () => {
                 </a>
                 <button
                   onClick={() => navigate("/dashboard")}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-white hover:bg-gray-50 h-10 px-4 text-sm font-medium transition-colors cursor-pointer"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card hover:bg-muted h-10 px-4 text-sm font-medium transition-colors cursor-pointer"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Back to dashboard

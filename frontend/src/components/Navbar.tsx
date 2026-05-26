@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, Menu, X, Github } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import LOGO from "../assets/Gemini_Generated_Image_azcybkazcybkazcy-removebg-preview.png";
+import LOGO from "../assets/47509314-ae8b-44c2-b8c0-5d5a8a7ff228.png";
 
 interface NavbarProps {
   onGetStarted: () => void;

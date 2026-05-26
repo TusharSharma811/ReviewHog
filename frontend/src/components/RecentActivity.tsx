@@ -49,7 +49,7 @@ function renderStars(rating: number | null | undefined) {
 
 export const RecentActivity = ({ recentActivities, hasMore = false, onLoadMore }: RecentActivityProps) => {
   return (
-    <div className="rounded-2xl border border-border bg-white">
+    <div className="rounded-2xl border border-border bg-card">
       <div className="px-6 py-5 border-b border-border">
         <h3 className="text-lg font-semibold text-foreground">Recent Activity</h3>
       </div>
@@ -80,13 +80,11 @@ export const RecentActivity = ({ recentActivities, hasMore = false, onLoadMore }
                 <Wrapper
                   key={review.id}
                   {...wrapperProps}
-                  className={`block p-4 rounded-xl bg-gray-50/80 hover:bg-gray-100/80 transition-colors ${
-                    review.prUrl ? "cursor-pointer group" : ""
-                  }`}
+                  className="block p-4 rounded-xl bg-muted/50 hover:bg-muted transition-all duration-200 cursor-pointer group hover:shadow-sm"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-base font-semibold text-foreground">{repoName}</span>
+                      <span className="text-base font-semibold text-foreground group-hover:text-indigo-600 transition-colors">{repoName}</span>
                       {review.prUrl && (
                         <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                       )}

@@ -2,6 +2,9 @@ import {
   GitCommit, GitPullRequest, AlertCircle, GitBranch, Flame, ArrowUpRight,
   Activity, Code2, Zap, BarChart3
 } from "lucide-react";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from "recharts";
 
 interface GitHubActivityData {
   available: boolean;
@@ -50,10 +53,10 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
       <div className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="rounded-2xl border border-border bg-white p-6 animate-pulse">
-              <div className="h-10 w-10 rounded-xl bg-gray-100 mb-4" />
-              <div className="h-4 w-20 bg-gray-100 rounded mb-2" />
-              <div className="h-8 w-16 bg-gray-100 rounded" />
+            <div key={i} className="rounded-2xl border border-border bg-card p-6 animate-pulse">
+              <div className="h-10 w-10 rounded-xl bg-muted mb-4" />
+              <div className="h-4 w-20 bg-muted rounded mb-2" />
+              <div className="h-8 w-16 bg-muted rounded" />
             </div>
           ))}
         </div>
@@ -63,7 +66,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
 
   if (!data || !data.available) {
     return (
-      <div className="rounded-2xl border border-border bg-white p-8 text-center">
+      <div className="rounded-2xl border border-border bg-card p-8 text-center">
         <Activity className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
         <p className="text-sm text-muted-foreground">
           {data?.message || "GitHub activity data unavailable. Please re-login to enable."}
@@ -78,14 +81,14 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
     dailyPushes, repoActivity,
   } = data;
 
-  const maxDaily = Math.max(...(dailyPushes || []).map((d) => d.count), 1);
+
 
   return (
     <div className="space-y-6">
       {/* Stat Cards Row 1: Activity Overview */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
         {/* Pushes */}
-        <div className="card-hover rounded-2xl border border-border bg-white p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 mb-3">
             <ArrowUpRight className="h-4 w-4 text-blue-500" />
           </div>
@@ -97,7 +100,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* Commits */}
-        <div className="card-hover rounded-2xl border border-border bg-white p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 mb-3">
             <GitCommit className="h-4 w-4 text-purple-500" />
           </div>
@@ -109,7 +112,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* PRs Opened */}
-        <div className="card-hover rounded-2xl border border-border bg-white p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 mb-3">
             <GitPullRequest className="h-4 w-4 text-emerald-500" />
           </div>
@@ -121,7 +124,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* PRs Merged */}
-        <div className="card-hover rounded-2xl border border-border bg-white p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 mb-3">
             <GitPullRequest className="h-4 w-4 text-violet-500" />
           </div>
@@ -133,7 +136,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* Issues */}
-        <div className="card-hover rounded-2xl border border-border bg-white p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 mb-3">
             <AlertCircle className="h-4 w-4 text-amber-500" />
           </div>
@@ -145,7 +148,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* Branches */}
-        <div className="card-hover rounded-2xl border border-border bg-white p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-50 mb-3">
             <GitBranch className="h-4 w-4 text-cyan-500" />
           </div>
@@ -158,7 +161,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
       {/* Streak + Most Active Repo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Contribution Streak */}
-        <div className="card-hover rounded-2xl border border-border bg-white p-6">
+        <div className="card-hover rounded-2xl border border-border bg-card p-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50">
               <Flame className={`h-5 w-5 ${(contributionStreak ?? 0) > 0 ? "text-orange-500" : "text-muted-foreground/40"}`} />
@@ -183,7 +186,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* Most Active Repo */}
-        <div className="card-hover rounded-2xl border border-border bg-white p-6">
+        <div className="card-hover rounded-2xl border border-border bg-card p-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50">
               <Zap className="h-5 w-5 text-indigo-500" />
@@ -212,7 +215,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
       {/* Push Activity + Language Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Daily Pushes Chart */}
-        <div className="lg:col-span-2 rounded-2xl border border-border bg-white p-6">
+        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-muted-foreground" />
@@ -221,24 +224,53 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
             <span className="text-xs text-muted-foreground">Last 14 days</span>
           </div>
           {dailyPushes && dailyPushes.length > 0 ? (
-            <div className="flex items-end gap-1.5 h-36">
-              {dailyPushes.map((day) => {
-                const height = maxDaily > 0 ? (day.count / maxDaily) * 100 : 0;
-                return (
-                  <div key={day.date} className="flex-1 flex flex-col items-center gap-1 group">
-                    <span className="text-sm font-semibold text-foreground">
-                      {day.count}
-                    </span>
-                    <div
-                      className="w-full rounded-t-md bg-blue-500 group-hover:bg-blue-600 transition-colors"
-                      style={{ height: `${Math.max(height, 3)}%` }}
-                    />
-                    <span className="text-xs text-muted-foreground leading-tight hidden sm:block font-medium">
-                      {day.label.split(",")[0].split(" ")[0]}
-                    </span>
-                  </div>
-                );
-              })}
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dailyPushes} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="pushGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.4} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 500 }}
+                    dy={8}
+                    tickFormatter={(value: string) => value.split(',')[0].split(' ')[0]}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#94a3b8' }}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1e293b',
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '10px 14px',
+                      boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+                    }}
+                    labelStyle={{ color: '#94a3b8', fontSize: 11, marginBottom: 4 }}
+                    itemStyle={{ color: '#e2e8f0', fontWeight: 600, fontSize: 13 }}
+                    cursor={{ fill: 'rgba(59,130,246,0.06)' }}
+                  />
+                  <Bar
+                    dataKey="count"
+                    name="Pushes"
+                    fill="url(#pushGradient)"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={40}
+                    animationDuration={800}
+                    animationEasing="ease-out"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-8">No push activity yet</p>
@@ -246,7 +278,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* Language Breakdown */}
-        <div className="rounded-2xl border border-border bg-white p-6">
+        <div className="rounded-2xl border border-border bg-card p-6">
           <div className="flex items-center gap-2 mb-6">
             <Code2 className="h-5 w-5 text-muted-foreground" />
             <h3 className="text-lg font-semibold text-foreground">Languages</h3>
@@ -266,7 +298,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
                         {lang.count} repo{lang.count !== 1 ? "s" : ""}
                       </span>
                     </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${LANG_COLORS[lang.language] || "bg-gray-400"}`}
                         style={{ width: `${(lang.count / total) * 100}%` }}
@@ -284,7 +316,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
 
       {/* Per-Repo Activity Breakdown */}
       {repoActivity && repoActivity.length > 0 && (
-        <div className="rounded-2xl border border-border bg-white p-6">
+        <div className="rounded-2xl border border-border bg-card p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4">Repo Activity Breakdown</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -299,7 +331,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
               </thead>
               <tbody>
                 {repoActivity.map((repo) => (
-                  <tr key={repo.name} className="border-b border-border/50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                  <tr key={repo.name} className="border-b border-border/50 last:border-0 hover:bg-muted/50 transition-colors">
                     <td className="py-2.5 pr-4 font-medium text-foreground">{repo.name}</td>
                     <td className="text-right py-2.5 px-3 text-blue-600 font-medium">{repo.pushes}</td>
                     <td className="text-right py-2.5 px-3 text-emerald-600 font-medium">{repo.prs}</td>

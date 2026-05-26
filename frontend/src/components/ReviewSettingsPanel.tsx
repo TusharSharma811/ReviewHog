@@ -71,7 +71,7 @@ export const ReviewSettingsPanel = () => {
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-white">
+    <div className="rounded-2xl border border-border bg-card">
       <div className="px-6 py-5 border-b border-border flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-lg font-semibold text-foreground">Review Automation</h3>
@@ -79,7 +79,7 @@ export const ReviewSettingsPanel = () => {
             {settings?.aiReviewsEnabled ? "Enabled" : "Paused"}
           </p>
         </div>
-        <div className="h-9 w-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+        <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
           <ShieldCheck className="h-4 w-4 text-foreground" />
         </div>
       </div>
