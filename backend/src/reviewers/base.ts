@@ -25,8 +25,8 @@ import {
 import prisma from "../db/prismaClient.js";
 import { logger } from "../utils/logger.js";
 
-const REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 60000);
-const MAX_OUTPUT_TOKENS = Number(process.env.AI_MAX_TOKENS || 3200);
+const REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 90000);
+const MAX_OUTPUT_TOKENS = Number(process.env.AI_MAX_TOKENS || 8000);
 const MAX_RETRIES = 2;
 const BASE_DELAY_MS = 2000;
 
