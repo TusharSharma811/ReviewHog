@@ -104,7 +104,7 @@
   background-clip: text;
 }
 
-/* Glassmorphism floating nav */
+/* Glassmorphism floating nav (legacy — used by dashboard) */
 .glass-nav {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(16px);
@@ -147,4 +147,206 @@
 /* Smooth scroll */
 html {
   scroll-behavior: smooth;
+}
+
+/* ═══════════════════════════════════════════════
+   LIQUID GLASS — Landing Page System
+   ═══════════════════════════════════════════════ */
+
+/* ── Background Glow Ellipses ── */
+.lg-glow-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.lg-glow {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.lg-glow-1 {
+  width: 700px;
+  height: 700px;
+  top: -180px;
+  left: -180px;
+  background: radial-gradient(circle, rgba(96, 177, 255, 0.30) 0%, transparent 70%);
+  filter: blur(80px);
+  animation: lg-drift-1 14s ease-in-out infinite alternate;
+}
+
+.lg-glow-2 {
+  width: 500px;
+  height: 500px;
+  top: 40px;
+  left: 80px;
+  background: radial-gradient(circle, rgba(49, 154, 255, 0.22) 0%, transparent 70%);
+  filter: blur(60px);
+  animation: lg-drift-2 18s ease-in-out infinite alternate;
+}
+
+.lg-glow-3 {
+  width: 400px;
+  height: 400px;
+  top: 200px;
+  left: -60px;
+  background: radial-gradient(circle, rgba(96, 177, 255, 0.15) 0%, transparent 70%);
+  filter: blur(100px);
+  animation: lg-drift-3 20s ease-in-out infinite alternate;
+}
+
+@keyframes lg-drift-1 {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(40px, 30px) scale(1.08); }
+}
+@keyframes lg-drift-2 {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-30px, 50px) scale(1.12); }
+}
+@keyframes lg-drift-3 {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(50px, -20px) scale(0.95); }
+}
+
+/* ── Liquid Glass Navbar ── */
+.lg-navbar {
+  position: sticky;
+  top: 30px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: calc(100% - 40px);
+  margin: 0 auto;
+  padding: 10px 12px 10px 24px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.30);
+  backdrop-filter: blur(50px);
+  -webkit-backdrop-filter: blur(50px);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  box-shadow:
+    inset 0px 4px 4px 0px rgba(255, 255, 255, 0.25),
+    0 8px 32px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.3s ease;
+}
+
+.lg-navbar:hover {
+  box-shadow:
+    inset 0px 4px 4px 0px rgba(255, 255, 255, 0.35),
+    0 12px 40px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Glass Signup Button ── */
+.lg-glass-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  padding: 8px 18px;
+  margin-left: 12px;
+  border-radius: 12px;
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0px 2px 3px 0px rgba(255, 255, 255, 0.30);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.lg-glass-btn:hover {
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow:
+    inset 0px 2px 3px 0px rgba(255, 255, 255, 0.45),
+    0 4px 12px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+/* ── Primary CTA ── */
+.lg-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+  padding: 16px 28px;
+  border-radius: 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(0, 132, 255, 0.80);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow:
+    inset 0px 4px 4px 0px rgba(255, 255, 255, 0.35),
+    0 8px 24px rgba(0, 132, 255, 0.25);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.lg-cta:hover {
+  transform: scale(1.02);
+  box-shadow:
+    inset 0px 4px 4px 0px rgba(255, 255, 255, 0.45),
+    0 12px 32px rgba(0, 132, 255, 0.35);
+  background: rgba(0, 132, 255, 0.90);
+}
+
+.lg-cta:active {
+  transform: scale(0.98);
+}
+
+.lg-cta-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.20);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: background 0.3s ease;
+}
+
+.lg-cta:hover .lg-cta-icon {
+  background: rgba(255, 255, 255, 0.30);
+}
+
+/* ── Orb Video ── */
+.lg-orb-video {
+  width: 100%;
+  max-width: 700px;
+  transform: scale(1.25);
+  mix-blend-mode: screen;
+  filter: hue-rotate(-55deg) saturate(250%) brightness(1.2) contrast(1.1);
+  pointer-events: none;
+}
+
+/* ── Fade-up animation ── */
+@keyframes lg-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Responsive — glow size reduction ── */
+@media (max-width: 768px) {
+  .lg-glow-1 { width: 400px; height: 400px; }
+  .lg-glow-2 { width: 300px; height: 300px; }
+  .lg-glow-3 { width: 250px; height: 250px; }
+
+  .lg-orb-video {
+    transform: scale(1.15);
+  }
 }
