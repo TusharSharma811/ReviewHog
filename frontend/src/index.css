@@ -262,17 +262,17 @@ html {
 
 /* ── Liquid Glass Navbar ── */
 .lg-navbar {
+  display: none;
   position: sticky;
-  top: 30px;
+  top: 20px;
   z-index: 100;
-  display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: fit-content;
-  max-width: calc(100% - 40px);
+  max-width: calc(100% - 32px);
   margin: 0 auto;
-  padding: 10px 12px 10px 24px;
-  border-radius: 16px;
+  padding: 8px 10px 8px 16px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.30);
   backdrop-filter: blur(50px);
   -webkit-backdrop-filter: blur(50px);
@@ -281,6 +281,16 @@ html {
     inset 0px 4px 4px 0px rgba(255, 255, 255, 0.25),
     0 8px 32px rgba(0, 0, 0, 0.06);
   transition: box-shadow 0.3s ease;
+}
+
+@media (min-width: 640px) {
+  .lg-navbar {
+    top: 30px;
+    gap: 8px;
+    max-width: calc(100% - 40px);
+    padding: 10px 12px 10px 24px;
+    border-radius: 16px;
+  }
 }
 
 .lg-navbar:hover {
@@ -321,12 +331,12 @@ html {
 .lg-cta {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: fit-content;
-  padding: 16px 28px;
-  border-radius: 16px;
+  padding: 13px 22px;
+  border-radius: 14px;
   font-family: 'Inter', sans-serif;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   color: #fff;
   background: rgba(0, 132, 255, 0.80);
@@ -338,6 +348,15 @@ html {
     0 8px 24px rgba(0, 132, 255, 0.25);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
+}
+
+@media (min-width: 640px) {
+  .lg-cta {
+    gap: 12px;
+    padding: 16px 28px;
+    border-radius: 16px;
+    font-size: 16px;
+  }
 }
 
 .lg-cta:hover {
@@ -397,7 +416,19 @@ html {
   .lg-glow-3 { width: 250px; height: 250px; }
 
   .lg-orb-video {
-    transform: scale(1.15);
+    transform: scale(1);
+    max-width: 320px;
+  }
+}
+
+@media (max-width: 480px) {
+  .lg-glow-1 { width: 280px; height: 280px; }
+  .lg-glow-2 { width: 200px; height: 200px; }
+  .lg-glow-3 { width: 160px; height: 160px; }
+
+  .lg-orb-video {
+    transform: scale(0.9);
+    max-width: 260px;
   }
 }
 
@@ -435,8 +466,8 @@ html {
 /* ── Feature Card ── */
 .feat-card {
   position: relative;
-  padding: 32px 28px 28px;
-  border-radius: 20px;
+  padding: 24px 20px 20px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
@@ -446,6 +477,13 @@ html {
     0 4px 24px rgba(0, 0, 0, 0.04);
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .feat-card {
+    padding: 32px 28px 28px;
+    border-radius: 20px;
+  }
 }
 
 .feat-card:hover {
@@ -496,20 +534,34 @@ html {
 .feat-title {
   font-family: 'Fustat', sans-serif;
   font-weight: 700;
-  font-size: 20px;
+  font-size: 18px;
   letter-spacing: -0.5px;
   color: #0a0a0a;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+}
+
+@media (min-width: 640px) {
+  .feat-title {
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
 }
 
 /* ── Feature Description ── */
 .feat-desc {
   font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.65;
   color: #666;
   letter-spacing: -0.2px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 640px) {
+  .feat-desc {
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
 }
 
 /* ── Feature Highlights List ── */

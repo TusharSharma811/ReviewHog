@@ -51,7 +51,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="rounded-2xl border border-border bg-card p-6 animate-pulse">
               <div className="h-10 w-10 rounded-xl bg-muted mb-4" />
@@ -86,82 +86,82 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
   return (
     <div className="space-y-6">
       {/* Stat Cards Row 1: Activity Overview */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
         {/* Pushes */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 mb-3">
             <ArrowUpRight className="h-4 w-4 text-blue-500" />
           </div>
           <p className="text-xs font-medium text-muted-foreground">Pushes</p>
-          <p className="text-2xl font-bold text-foreground">{pushes?.thisWeek ?? 0}</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">{pushes?.thisWeek ?? 0}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {pushes?.thisMonth ?? 0} this month
           </p>
         </div>
 
         {/* Commits */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 mb-3">
             <GitCommit className="h-4 w-4 text-purple-500" />
           </div>
           <p className="text-xs font-medium text-muted-foreground">Commits</p>
-          <p className="text-2xl font-bold text-foreground">{commits?.thisWeek ?? 0}</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">{commits?.thisWeek ?? 0}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {commits?.thisMonth ?? 0} this month
           </p>
         </div>
 
         {/* PRs Opened */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 mb-3">
             <GitPullRequest className="h-4 w-4 text-emerald-500" />
           </div>
           <p className="text-xs font-medium text-muted-foreground">PRs Opened</p>
-          <p className="text-2xl font-bold text-foreground">{prsOpened?.thisWeek ?? 0}</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">{prsOpened?.thisWeek ?? 0}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {prsOpened?.thisMonth ?? 0} this month
           </p>
         </div>
 
         {/* PRs Merged */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 mb-3">
             <GitPullRequest className="h-4 w-4 text-violet-500" />
           </div>
           <p className="text-xs font-medium text-muted-foreground">PRs Closed</p>
-          <p className="text-2xl font-bold text-foreground">{prsMerged?.thisWeek ?? 0}</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">{prsMerged?.thisWeek ?? 0}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {prsMerged?.thisMonth ?? 0} this month
           </p>
         </div>
 
         {/* Issues */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 mb-3">
             <AlertCircle className="h-4 w-4 text-amber-500" />
           </div>
           <p className="text-xs font-medium text-muted-foreground">Issues</p>
-          <p className="text-2xl font-bold text-foreground">{issuesOpened?.thisWeek ?? 0}</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">{issuesOpened?.thisWeek ?? 0}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {issuesOpened?.thisMonth ?? 0} this month
           </p>
         </div>
 
         {/* Branches */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-50 mb-3">
             <GitBranch className="h-4 w-4 text-cyan-500" />
           </div>
           <p className="text-xs font-medium text-muted-foreground">Branches</p>
-          <p className="text-2xl font-bold text-foreground">{branches?.thisMonth ?? 0}</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">{branches?.thisMonth ?? 0}</p>
           <p className="text-xs text-muted-foreground mt-0.5">created this month</p>
         </div>
       </div>
 
       {/* Streak + Most Active Repo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {/* Contribution Streak */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-6">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50">
               <Flame className={`h-5 w-5 ${(contributionStreak ?? 0) > 0 ? "text-orange-500" : "text-muted-foreground/40"}`} />
@@ -186,7 +186,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* Most Active Repo */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-6">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50">
               <Zap className="h-5 w-5 text-indigo-500" />
@@ -213,9 +213,9 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
       </div>
 
       {/* Push Activity + Language Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Daily Pushes Chart */}
-        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6">
+        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-4 sm:p-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-muted-foreground" />
@@ -226,7 +226,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
           {dailyPushes && dailyPushes.length > 0 ? (
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyPushes} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={dailyPushes} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="pushGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
@@ -278,7 +278,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* Language Breakdown */}
-        <div className="rounded-2xl border border-border bg-card p-6">
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-6">
             <Code2 className="h-5 w-5 text-muted-foreground" />
             <h3 className="text-lg font-semibold text-foreground">Languages</h3>
@@ -316,7 +316,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
 
       {/* Per-Repo Activity Breakdown */}
       {repoActivity && repoActivity.length > 0 && (
-        <div className="rounded-2xl border border-border bg-card p-6">
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4">Repo Activity Breakdown</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

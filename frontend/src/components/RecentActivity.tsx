@@ -50,10 +50,10 @@ function renderStars(rating: number | null | undefined) {
 export const RecentActivity = ({ recentActivities, hasMore = false, onLoadMore }: RecentActivityProps) => {
   return (
     <div className="rounded-2xl border border-border bg-card">
-      <div className="px-6 py-5 border-b border-border">
+      <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-border">
         <h3 className="text-lg font-semibold text-foreground">Recent Activity</h3>
       </div>
-      <div className="p-6 space-y-3">
+      <div className="p-4 sm:p-6 space-y-3">
         {recentActivities.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
             No reviews yet. Open a pull request to get your first AI review!

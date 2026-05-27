@@ -79,8 +79,8 @@ const Settings = () => {
             <div className="flex items-center space-x-3 min-w-0">
               <img src={LOGO} alt="ReviewHog Logo" className="h-8 w-8 shrink-0" />
               <div className="min-w-0">
-                <h1 className="text-lg font-semibold text-foreground">Settings</h1>
-                <p className="text-sm text-muted-foreground truncate">
+                <h1 className="text-base sm:text-lg font-semibold text-foreground">Settings</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate max-w-[160px] sm:max-w-none">
                   {userData?.name ?? "ReviewHog account"}
                 </p>
               </div>
@@ -105,13 +105,13 @@ const Settings = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 md:px-6 py-8">
+      <main className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-8">
         <div className="mb-8 flex items-center gap-3">
           <div className="h-10 w-10 rounded-lg bg-card border border-border flex items-center justify-center">
             <SettingsIcon className="h-5 w-5 text-foreground" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Workspace Settings</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">Workspace Settings</h2>
             <p className="text-sm text-muted-foreground">Review behavior, AI provider, and account controls</p>
           </div>
         </div>

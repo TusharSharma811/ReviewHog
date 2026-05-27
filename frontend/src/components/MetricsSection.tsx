@@ -68,7 +68,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="rounded-2xl border border-border bg-card p-6 animate-pulse">
               <div className="h-10 w-10 rounded-xl bg-muted mb-4" />
@@ -97,50 +97,50 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Reviews */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 mb-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6">
+          <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-indigo-50 mb-3 sm:mb-4">
             <GitPullRequest className="h-5 w-5 text-indigo-500" />
           </div>
           <h3 className="text-sm font-medium text-muted-foreground">Total Reviews</h3>
-          <p className="text-3xl font-bold text-foreground tracking-tight">{overview.totalReviews}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">{overview.totalReviews}</p>
           <p className="text-xs text-muted-foreground mt-1">
             across {overview.totalPRs} pull request{overview.totalPRs !== 1 ? "s" : ""}
           </p>
         </div>
 
         {/* Issues Found */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 mb-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6">
+          <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-red-50 mb-3 sm:mb-4">
             <Bug className="h-5 w-5 text-red-500" />
           </div>
           <h3 className="text-sm font-medium text-muted-foreground">Issues Found</h3>
-          <p className="text-3xl font-bold text-red-600 tracking-tight">{overview.issuesFound}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-red-600 tracking-tight">{overview.issuesFound}</p>
           <p className="text-xs text-muted-foreground mt-1">
             critical & major issues caught
           </p>
         </div>
 
         {/* Clean Passes */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 mb-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6">
+          <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-emerald-50 mb-3 sm:mb-4">
             <CheckCircle className="h-5 w-5 text-emerald-500" />
           </div>
           <h3 className="text-sm font-medium text-muted-foreground">Clean Passes</h3>
-          <p className="text-3xl font-bold text-emerald-600 tracking-tight">{overview.cleanPasses}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-emerald-600 tracking-tight">{overview.cleanPasses}</p>
           <p className="text-xs text-muted-foreground mt-1">
             files passed with no issues
           </p>
         </div>
 
         {/* Quality Score */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-6">
-          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${qualityBgColor(overview.qualityScore)} mb-4`}>
+        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6">
+          <div className={`flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl ${qualityBgColor(overview.qualityScore)} mb-3 sm:mb-4`}>
             <TrendingUp className={`h-5 w-5 ${qualityColor(overview.qualityScore)}`} />
           </div>
           <h3 className="text-sm font-medium text-muted-foreground">Quality Score</h3>
-          <p className={`text-3xl font-bold tracking-tight ${qualityColor(overview.qualityScore)}`}>
+          <p className={`text-2xl sm:text-3xl font-bold tracking-tight ${qualityColor(overview.qualityScore)}`}>
             {overview.qualityScore !== null ? `${overview.qualityScore}%` : "—"}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
@@ -157,16 +157,16 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
       </div>
 
       {/* Activity Chart + Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Daily Activity Chart */}
-        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6">
+        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-4 sm:p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-foreground">Review Activity</h3>
+            <h3 className="text-base sm:text-lg font-semibold text-foreground">Review Activity</h3>
             <span className="text-xs text-muted-foreground">Last 7 days</span>
           </div>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={dailyActivity} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={dailyActivity} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                 <defs>
                   <linearGradient id="reviewGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
@@ -217,8 +217,8 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
         </div>
 
         {/* Severity Breakdown */}
-        <div className="rounded-2xl border border-border bg-card p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-6">Severity Breakdown</h3>
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold text-foreground mb-4 sm:mb-6">Severity Breakdown</h3>
           <div className="space-y-4">
             {(() => {
               const total = severityBreakdown.issues + severityBreakdown.neutral + severityBreakdown.clean;
@@ -276,7 +276,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
 
       {/* Top Repos */}
       {topRepos.length > 0 && (
-        <div className="rounded-2xl border border-border bg-card p-6">
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-foreground">Most Active Repos</h3>
             {overview.lastReviewAt && (

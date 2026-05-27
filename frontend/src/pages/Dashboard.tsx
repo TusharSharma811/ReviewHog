@@ -345,11 +345,11 @@ const Dashboard = () => {
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-4 md:px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <img src={LOGO} alt="ReviewHog Logo" className="h-8 w-8 rounded-lg" />
+            <div className="flex items-center space-x-2.5 sm:space-x-3">
+              <img src={LOGO} alt="ReviewHog Logo" className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg" />
               <div>
-                <h1 className="text-lg font-semibold text-foreground">ReviewHog</h1>
-                <p className="text-sm text-muted-foreground">
+                <h1 className="text-base sm:text-lg font-semibold text-foreground">ReviewHog</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate max-w-[160px] sm:max-w-none">
                   {userData?.name ? `Welcome back, ${userData.name}` : "GitHub Integration Dashboard"}
                 </p>
               </div>
@@ -386,7 +386,7 @@ const Dashboard = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 md:px-6 py-8">
+      <main className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-8">
         {/* Install GitHub App Banner */}
         {repositories.length === 0 && (
           <div className="mb-8 p-6 rounded-2xl border border-indigo-200 bg-indigo-50/50">
@@ -420,18 +420,18 @@ const Dashboard = () => {
 
         {/* Metrics Section */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-foreground mb-6">Dashboard Overview</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">Dashboard Overview</h2>
           <MetricsSection metrics={metricsData} loading={metricsLoading} />
         </div>
 
         {/* GitHub Activity Section */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-foreground mb-6">GitHub Activity</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">GitHub Activity</h2>
           <GitHubActivitySection data={activityData} loading={activityLoading} />
         </div>
 
         {/* Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
           {/* Recent Activity */}
           <div className="lg:col-span-2">
             <RecentActivity

@@ -21,6 +21,7 @@ import { motion } from "motion/react";
 import { API_BASE_URL } from "@/config";
 import { authFetch } from "@/lib/auth";
 import { Navbar } from "@/components/Navbar";
+import LOGO from "../assets/47509314-ae8b-44c2-b8c0-5d5a8a7ff228.png";
 
 /* ─── Feature Data ─── */
 
@@ -157,10 +158,26 @@ const LandingPage = () => {
       <Navbar onGetStarted={handleGitHubLogin} isLoading={isLoading} />
 
       {/* ─── Hero Section ─── */}
-      <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 md:px-[60px] pt-16 md:pt-20 pb-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-10 lg:gap-10">
+      <main className="relative z-10 w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-[60px] pt-8 sm:pt-16 md:pt-20 pb-10">
+        {/* Mobile Brand Header (replaces orb on small screens) */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex lg:hidden items-center gap-3 mb-6"
+        >
+          <img src={LOGO} alt="ReviewHog Logo" className="h-10 w-10 rounded-xl" />
+          <span
+            className="text-2xl font-bold tracking-[-0.5px] text-[#0a0a0a]"
+            style={{ fontFamily: "'Fustat', sans-serif" }}
+          >
+            ReviewHog
+          </span>
+        </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-6 sm:gap-10 lg:gap-10">
           {/* ── Left Column ── */}
-          <div className="flex flex-col gap-7">
+          <div className="flex flex-col gap-5 sm:gap-7">
             {/* Badge */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -169,7 +186,7 @@ const LandingPage = () => {
               id="social-proof"
             >
               <span
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium text-[#666]"
+                className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full text-xs font-medium text-[#666]"
                 style={{
                   background: "rgba(99, 102, 241, 0.06)",
                   border: "1px solid rgba(99, 102, 241, 0.15)",
@@ -185,11 +202,11 @@ const LandingPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.15 }}
-              className="text-[42px] sm:text-[56px] lg:text-[75px] leading-[1.05] text-[#0a0a0a]"
+              className="text-[32px] sm:text-[42px] md:text-[56px] lg:text-[75px] leading-[1.05] text-[#0a0a0a]"
               style={{
                 fontFamily: "'Fustat', sans-serif",
                 fontWeight: 700,
-                letterSpacing: "-2px",
+                letterSpacing: "-1.5px",
               }}
               id="hero-headline"
             >
@@ -203,10 +220,10 @@ const LandingPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="text-base sm:text-lg leading-[1.65] text-[#666] max-w-[520px]"
+              className="text-sm sm:text-base md:text-lg leading-[1.65] text-[#666] max-w-[520px]"
               style={{
                 fontFamily: "'Inter', sans-serif",
-                letterSpacing: "-0.5px",
+                letterSpacing: "-0.3px",
               }}
               id="hero-sub"
             >
@@ -219,7 +236,7 @@ const LandingPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.45 }}
-              className="flex flex-wrap items-center gap-4"
+              className="flex flex-wrap items-center gap-3 sm:gap-4"
             >
               <button
                 id="hero-cta"
@@ -244,12 +261,12 @@ const LandingPage = () => {
             </motion.div>
           </div>
 
-          {/* ── Right Column — Glassy Orb ── */}
+          {/* ── Right Column — Glassy Orb (desktop only) ── */}
           <motion.div
             initial={{ opacity: 0, y: 30, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.3 }}
-            className="flex items-center justify-center overflow-visible lg:order-last order-first"
+            className="hidden lg:flex items-center justify-center overflow-visible order-1 lg:order-2"
             id="hero-orb"
           >
             <video
@@ -269,7 +286,7 @@ const LandingPage = () => {
           ═══════════════════════════════════════════════ */}
       <section
         id="features"
-        className="relative z-10 w-full max-w-[1600px] mx-auto px-6 md:px-[60px] pt-20 md:pt-32 pb-24 md:pb-36"
+        className="relative z-10 w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-[60px] pt-12 sm:pt-20 md:pt-32 pb-16 sm:pb-24 md:pb-36"
       >
         {/* Section Header */}
         <motion.div
@@ -277,10 +294,10 @@ const LandingPage = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16 md:mb-24"
+          className="text-center mb-10 sm:mb-16 md:mb-24"
         >
           <span
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium text-[#666] mb-6"
+            className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full text-xs font-medium text-[#666] mb-4 sm:mb-6"
             style={{
               background: "rgba(99, 102, 241, 0.06)",
               border: "1px solid rgba(99, 102, 241, 0.15)",
@@ -290,18 +307,18 @@ const LandingPage = () => {
             Everything you need
           </span>
           <h2
-            className="text-[32px] sm:text-[44px] lg:text-[56px] leading-[1.1] text-[#0a0a0a] mt-4"
+            className="text-[26px] sm:text-[32px] md:text-[44px] lg:text-[56px] leading-[1.1] text-[#0a0a0a] mt-4"
             style={{
               fontFamily: "'Fustat', sans-serif",
               fontWeight: 700,
-              letterSpacing: "-1.5px",
+              letterSpacing: "-1px",
             }}
           >
             Ship better code,{" "}
             <span className="gradient-text">faster</span>
           </h2>
           <p
-            className="mt-5 text-base sm:text-lg text-[#666] max-w-[600px] mx-auto leading-[1.65]"
+            className="mt-4 sm:mt-5 text-sm sm:text-base md:text-lg text-[#666] max-w-[600px] mx-auto leading-[1.65] px-2 sm:px-0"
             style={{
               fontFamily: "'Inter', sans-serif",
               letterSpacing: "-0.3px",
@@ -358,7 +375,7 @@ const LandingPage = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="flex flex-col items-center gap-5 mt-20 md:mt-28"
+          className="flex flex-col items-center gap-4 sm:gap-5 mt-12 sm:mt-20 md:mt-28"
         >
           <p
             className="text-[#888] text-sm text-center"

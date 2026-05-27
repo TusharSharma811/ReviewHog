@@ -46,7 +46,7 @@ export const RepositoryCard = ({
 
   return (
     <div className="rounded-2xl border border-border bg-card">
-      <div className="px-6 py-5 border-b border-border flex items-center justify-between">
+      <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-border flex items-center justify-between">
         <h3 className="text-lg font-semibold text-foreground">Repositories</h3>
         {onAddRepo && (
           <button
@@ -58,7 +58,7 @@ export const RepositoryCard = ({
           </button>
         )}
       </div>
-      <div className="p-6 space-y-3">
+      <div className="p-4 sm:p-6 space-y-3">
         {repositories.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-muted-foreground mb-3">
