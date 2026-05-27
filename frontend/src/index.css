@@ -400,3 +400,137 @@ html {
     transform: scale(1.15);
   }
 }
+
+/* ═══════════════════════════════════════════════
+   FEATURES SECTION — Landing Page
+   ═══════════════════════════════════════════════ */
+
+/* ── Feature Grid ── */
+.feat-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 20px;
+}
+
+@media (min-width: 640px) {
+  .feat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .feat-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ── First two cards span wider on lg ── */
+@media (min-width: 1024px) {
+  .feat-grid > *:nth-child(1),
+  .feat-grid > *:nth-child(2) {
+    grid-column: span 1;
+  }
+}
+
+/* ── Feature Card ── */
+.feat-card {
+  position: relative;
+  padding: 32px 28px 28px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow:
+    inset 0 1px 2px 0 rgba(255, 255, 255, 0.50),
+    0 4px 24px rgba(0, 0, 0, 0.04);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.feat-card:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    inset 0 1px 2px 0 rgba(255, 255, 255, 0.60),
+    0 8px 40px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.10);
+}
+
+/* ── Glow behind card ── */
+.feat-card-glow {
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.feat-card:hover .feat-card-glow {
+  opacity: 1;
+}
+
+/* ── Feature Icon ── */
+.feat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+  transition: transform 0.3s ease;
+}
+
+.feat-card:hover .feat-icon {
+  transform: scale(1.08);
+}
+
+/* ── Feature Title ── */
+.feat-title {
+  font-family: 'Fustat', sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.5px;
+  color: #0a0a0a;
+  margin-bottom: 10px;
+}
+
+/* ── Feature Description ── */
+.feat-desc {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #666;
+  letter-spacing: -0.2px;
+  margin-bottom: 20px;
+}
+
+/* ── Feature Highlights List ── */
+.feat-highlights {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  padding-top: 16px;
+}
+
+.feat-highlight-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #555;
+  letter-spacing: -0.1px;
+}
+

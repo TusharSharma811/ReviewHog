@@ -9,9 +9,23 @@ interface NavbarProps {
 }
 
 const NAV_LINKS = [
-  { label: "Home", href: "#", id: "nav-home" },
+  { label: "Home", href: "#home", id: "nav-home" },
   { label: "Features", href: "#features", id: "nav-features" },
 ];
+
+/** Smooth-scroll to a hash target, handling the sticky navbar offset */
+function scrollToHash(hash: string) {
+  if (hash === "#home" || hash === "#") {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  const el = document.querySelector(hash);
+  if (el) {
+    const offset = 100; // clear the sticky navbar
+    const y = el.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top: y, behavior: "smooth" });
+  }
+}
 
 export function Navbar({ onGetStarted, isLoading }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -48,7 +62,11 @@ export function Navbar({ onGetStarted, isLoading }: NavbarProps) {
               <a
                 href={link.href}
                 id={link.id}
-                className="text-sm font-medium text-[#555] px-4 py-2 rounded-[10px] transition-colors no-underline hover:text-[#111] hover:bg-black/5 whitespace-nowrap"
+                onClick={(e) => {
+                  e.preventDefault();
+                  scrollToHash(link.href);
+                }}
+                className="text-sm font-medium text-[#555] px-4 py-2 rounded-[10px] transition-colors no-underline hover:text-[#111] hover:bg-black/5 whitespace-nowrap cursor-pointer"
               >
                 {link.label}
               </a>
@@ -117,8 +135,12 @@ export function Navbar({ onGetStarted, isLoading }: NavbarProps) {
                 <a
                   key={link.id}
                   href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="text-sm font-medium text-[#555] px-4 py-3 rounded-[10px] transition-colors no-underline hover:text-[#111] hover:bg-black/5"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setMobileOpen(false);
+                    scrollToHash(link.href);
+                  }}
+                  className="text-sm font-medium text-[#555] px-4 py-3 rounded-[10px] transition-colors no-underline hover:text-[#111] hover:bg-black/5 cursor-pointer"
                 >
                   {link.label}
                 </a>
