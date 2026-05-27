@@ -1,9 +1,10 @@
-import { Loader2, ExternalLink, LogOut, RefreshCw, Settings as SettingsIcon, Sun, Moon } from "lucide-react";
+import { ExternalLink, LogOut, RefreshCw, Settings as SettingsIcon, Sun, Moon } from "lucide-react";
 import { MetricsSection } from "@/components/MetricsSection";
 import { GitHubActivitySection } from "@/components/GitHubActivity";
 import { RecentActivity } from "@/components/RecentActivity";
 import { RepositoryCard } from "@/components/RepositoryCard";
 import { AddRepoModal } from "@/components/AddRepoModal";
+import Loader from "@/components/Loader";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
@@ -310,8 +311,8 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="h-8 w-8 text-foreground animate-spin" />
+        <div className="flex flex-col items-center space-y-4 text-foreground">
+          <Loader />
           <p className="text-sm text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>

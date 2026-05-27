@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, ExternalLink, Github, Loader2, LogOut, Settings as SettingsIcon, User } from "lucide-react";
+import { ArrowLeft, ExternalLink, Github, LogOut, Settings as SettingsIcon, User } from "lucide-react";
+import Loader from "@/components/Loader";
 import { useNavigate } from "react-router-dom";
 import { AiSettingsPanel } from "@/components/AiSettingsPanel";
 import { ReviewSettingsPanel } from "@/components/ReviewSettingsPanel";
@@ -63,8 +64,8 @@ const Settings = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="h-8 w-8 text-foreground animate-spin" />
+        <div className="flex flex-col items-center space-y-4 text-foreground">
+          <Loader />
           <p className="text-sm text-muted-foreground">Loading settings...</p>
         </div>
       </div>
