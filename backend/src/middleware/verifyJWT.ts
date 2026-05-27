@@ -16,13 +16,18 @@ const verifyJWT = (req: RequestWithUser, res: Response, next: NextFunction) => {
     return res.status(500).json({ message: "JWT secret not configured" });
   }
 
-  jwt.verify(token, secret, (err: jwt.VerifyErrors | null, decoded: string | JwtPayload | undefined) => {
-    if (err) {
-      return res.status(403).json({ message: "Forbidden" });
+  jwt.verify(
+    token,
+    secret,
+    { issuer: "reviewhog", audience: "reviewhog-api" },
+    (err: jwt.VerifyErrors | null, decoded: string | JwtPayload | undefined) => {
+      if (err) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      req.user = decoded as AuthPayload;
+      next();
     }
-    req.user = decoded as AuthPayload;
-    next();
-  });
+  );
 };
 
 export default verifyJWT;

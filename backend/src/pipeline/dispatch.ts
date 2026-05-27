@@ -3,15 +3,19 @@
  *
  * Selects which specialized reviewers to run on each chunk based on
  * the file categories present, then executes them in parallel.
+ *
+ * P0: Chunks are processed in parallel with a concurrency cap.
+ * C3: Token usage is aggregated from all reviewer calls.
  */
 
+import pLimit from "p-limit";
 import type {
   ReviewChunk,
   PRContext,
   Finding,
   ReviewerType,
 } from "./types.js";
-import { runReviewer } from "../reviewers/base.js";
+import { runReviewer, type ResolvedSettings } from "../reviewers/base.js";
 import { CORRECTNESS_SYSTEM_PROMPT } from "../reviewers/correctness.js";
 import { SECURITY_SYSTEM_PROMPT } from "../reviewers/security.js";
 import { logger } from "../utils/logger.js";
@@ -25,6 +29,10 @@ const REVIEWER_PROMPTS: Record<ReviewerType, string> = {
   concurrency: "",
   "api-contract": "",
 };
+
+// P0: Concurrency limit for parallel chunk processing
+// Each chunk can have 1-2 reviewers, so 3 chunks = up to 6 API calls
+const CHUNK_CONCURRENCY = Number(process.env.PIPELINE_CHUNK_CONCURRENCY || 3);
 
 // ─── Reviewer Selection ─────────────────────────────────────────────────────
 
@@ -101,64 +109,101 @@ function selectReviewers(chunk: ReviewChunk): ReviewerType[] {
 export interface DispatchResult {
   findings: Finding[];
   reviewersUsed: ReviewerType[];
+  totalTokensUsed: number; // C3: Aggregated token usage
 }
 
 export async function dispatchReviewers(
   chunks: ReviewChunk[],
-  ctx: PRContext
+  ctx: PRContext,
+  preResolvedSettings?: ResolvedSettings // P1: Settings resolved once at pipeline start
 ): Promise<DispatchResult> {
   const allFindings: Finding[] = [];
   const reviewersUsed = new Set<ReviewerType>();
+  let totalTokensUsed = 0;
 
-  for (const chunk of chunks) {
-    const selectedReviewers = selectReviewers(chunk);
+  // P0: Process all chunks in parallel with a concurrency cap
+  const limit = pLimit(CHUNK_CONCURRENCY);
 
-    logger.info("DISPATCH", `Chunk ${chunk.id}`, {
-      prId: ctx.prId,
-      fileCount: chunk.files.length,
-      risk: chunk.maxRiskTier,
-      reviewers: selectedReviewers,
-    });
+  const chunkResults = await Promise.allSettled(
+    chunks.map((chunk) =>
+      limit(async () => {
+        const selectedReviewers = selectReviewers(chunk);
 
-    // Run all selected reviewers in parallel for this chunk
-    const results = await Promise.allSettled(
-      selectedReviewers.map((reviewerType) => {
-        const systemPrompt = REVIEWER_PROMPTS[reviewerType];
-        if (!systemPrompt) {
-          logger.warn("DISPATCH", `No prompt for reviewer: ${reviewerType}`);
-          return Promise.resolve([]);
+        logger.info("DISPATCH", `Chunk ${chunk.id}`, {
+          prId: ctx.prId,
+          fileCount: chunk.files.length,
+          risk: chunk.maxRiskTier,
+          reviewers: selectedReviewers,
+        });
+
+        // Run all selected reviewers in parallel for this chunk
+        const results = await Promise.allSettled(
+          selectedReviewers.map((reviewerType) => {
+            const systemPrompt = REVIEWER_PROMPTS[reviewerType];
+            if (!systemPrompt) {
+              logger.warn("DISPATCH", `No prompt for reviewer: ${reviewerType}`);
+              return Promise.resolve({ findings: [] as Finding[], tokensUsed: 0 });
+            }
+
+            return runReviewer({
+              reviewerType,
+              systemPrompt,
+              chunk,
+              ctx,
+              preResolvedSettings,
+            });
+          })
+        );
+
+        // Collect findings and tokens from this chunk
+        const chunkFindings: Finding[] = [];
+        let chunkTokens = 0;
+        const chunkReviewers: ReviewerType[] = [];
+
+        for (let i = 0; i < results.length; i++) {
+          const result = results[i];
+          if (result.status === "fulfilled") {
+            chunkFindings.push(...result.value.findings);
+            chunkTokens += result.value.tokensUsed;
+            chunkReviewers.push(selectedReviewers[i]);
+          } else {
+            logger.error("DISPATCH", "Reviewer promise rejected", {
+              prId: ctx.prId,
+              chunkId: chunk.id,
+              reviewer: selectedReviewers[i],
+              error:
+                result.reason instanceof Error
+                  ? result.reason.message
+                  : String(result.reason),
+            });
+          }
         }
 
-        reviewersUsed.add(reviewerType);
-
-        return runReviewer({
-          reviewerType,
-          systemPrompt,
-          chunk,
-          ctx,
-        });
+        return { findings: chunkFindings, tokensUsed: chunkTokens, reviewers: chunkReviewers };
       })
-    );
+    )
+  );
 
-    // Collect findings from successful reviewers
-    for (const result of results) {
-      if (result.status === "fulfilled") {
-        allFindings.push(...result.value);
-      } else {
-        logger.error("DISPATCH", "Reviewer promise rejected", {
-          prId: ctx.prId,
-          chunkId: chunk.id,
-          error:
-            result.reason instanceof Error
-              ? result.reason.message
-              : String(result.reason),
-        });
-      }
+  // Aggregate results from all chunks
+  for (const result of chunkResults) {
+    if (result.status === "fulfilled") {
+      allFindings.push(...result.value.findings);
+      totalTokensUsed += result.value.tokensUsed;
+      for (const r of result.value.reviewers) reviewersUsed.add(r);
+    } else {
+      logger.error("DISPATCH", "Chunk processing failed", {
+        prId: ctx.prId,
+        error:
+          result.reason instanceof Error
+            ? result.reason.message
+            : String(result.reason),
+      });
     }
   }
 
   return {
     findings: allFindings,
     reviewersUsed: Array.from(reviewersUsed),
+    totalTokensUsed,
   };
 }

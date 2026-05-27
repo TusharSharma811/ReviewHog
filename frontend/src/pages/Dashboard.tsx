@@ -163,9 +163,10 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    // Extract token from URL (set by OAuth callback redirect)
+    // SEC-1: Clean up any old URL-based token params (backward compat)
     const urlToken = searchParams.get("token");
     if (urlToken) {
+      // Legacy: if a token is in the URL, store it and clean up
       setToken(urlToken);
       const url = new URL(window.location.href);
       url.searchParams.delete("token");
@@ -173,12 +174,8 @@ const Dashboard = () => {
       window.history.replaceState({}, "", url.toString());
     }
 
-    // If no token exists at all, redirect to login
-    if (!urlToken && !getToken()) {
-      window.location.href = "/";
-      return;
-    }
-
+    // Auth is now cookie-based — fetchData will return 401/403 if no valid cookie.
+    // Only redirect if there's no cookie AND no localStorage token.
     fetchData().then((data) => {
       if (isNewUser) {
         toast.success("Welcome to ReviewHog! 🎉", {
@@ -216,14 +213,21 @@ const Dashboard = () => {
     return () => clearInterval(refreshInterval);
   }, [fetchData, fetchMetrics, fetchActivity]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     // Stop any active polling
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = null;
     }
 
-    // Clear token
+    // SEC-1: Clear server-side HttpOnly cookie
+    try {
+      await authFetch(`${API_BASE_URL}/api/auth/logout`, { method: "POST" });
+    } catch {
+      // Best-effort — continue with client-side cleanup
+    }
+
+    // Clear localStorage fallback token
     removeToken();
 
     // Hard redirect to clear all React state (prevents stale auth)

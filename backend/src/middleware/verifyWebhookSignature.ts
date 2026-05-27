@@ -22,10 +22,14 @@ export const verifyWebhookSignature = (req: Request, res: Response, next: NextFu
 
   const expected = "sha256=" + crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
 
-  const isValid = crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expected)
-  );
+  const sigBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+
+  if (sigBuffer.length !== expectedBuffer.length) {
+    return res.status(401).json({ message: "Invalid webhook signature" });
+  }
+
+  const isValid = crypto.timingSafeEqual(sigBuffer, expectedBuffer);
 
   if (!isValid) {
     return res.status(401).json({ message: "Invalid webhook signature" });

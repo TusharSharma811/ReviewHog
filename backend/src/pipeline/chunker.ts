@@ -89,12 +89,10 @@ function computeDominantCategory(files: ClassifiedFile[]): FileCategory {
   return dominant;
 }
 
-let chunkCounter = 0;
-
-function makeChunk(files: ClassifiedFile[]): ReviewChunk {
-  chunkCounter++;
+function makeChunk(files: ClassifiedFile[], counter: { value: number }): ReviewChunk {
+  counter.value++;
   return {
-    id: `chunk-${chunkCounter}`,
+    id: `chunk-${counter.value}`,
     files,
     totalTokens: files.reduce((sum, f) => sum + f.tokenEstimate, 0),
     maxRiskTier: computeMaxRiskTier(files),
@@ -113,8 +111,7 @@ function makeChunk(files: ClassifiedFile[]): ReviewChunk {
  * 3. Oversized single files become their own truncated chunk
  */
 export function buildChunks(files: ClassifiedFile[]): ReviewChunk[] {
-  // Reset counter per pipeline run
-  chunkCounter = 0;
+  const counter = { value: 0 };
 
   if (files.length === 0) return [];
 
@@ -132,18 +129,18 @@ export function buildChunks(files: ClassifiedFile[]): ReviewChunk[] {
     if (file.tokenEstimate > MAX_CHUNK_TOKENS) {
       // Flush current batch first
       if (currentFiles.length > 0) {
-        chunks.push(makeChunk(currentFiles));
+        chunks.push(makeChunk(currentFiles, counter));
         currentFiles = [];
         currentTokens = 0;
       }
-      chunks.push(makeChunk([truncateFile(file, MAX_SINGLE_FILE_TOKENS)]));
+      chunks.push(makeChunk([truncateFile(file, MAX_SINGLE_FILE_TOKENS)], counter));
       continue;
     }
 
     // Would exceed limit → flush and start new chunk
     if (currentTokens + file.tokenEstimate > MAX_CHUNK_TOKENS) {
       if (currentFiles.length > 0) {
-        chunks.push(makeChunk(currentFiles));
+        chunks.push(makeChunk(currentFiles, counter));
       }
       currentFiles = [file];
       currentTokens = file.tokenEstimate;
@@ -155,7 +152,7 @@ export function buildChunks(files: ClassifiedFile[]): ReviewChunk[] {
 
   // Flush remaining
   if (currentFiles.length > 0) {
-    chunks.push(makeChunk(currentFiles));
+    chunks.push(makeChunk(currentFiles, counter));
   }
 
   return chunks;

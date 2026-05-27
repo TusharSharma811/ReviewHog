@@ -99,11 +99,15 @@ Reviewed ${reviewedFiles.length} file(s): ${reviewedFiles.map((file) => `\`${fil
 }
 
 // Zod validation for the webhook payload
+// C2: Added title, body, base to extract PR context for AI reviewers
 const pullRequestPayloadSchema = z.object({
   action: z.string(),
   pull_request: z.object({
     id: z.union([z.string(), z.number()]).transform(String),
+    title: z.string().optional().default(""),
+    body: z.string().nullable().optional().default(""),
     head: z.object({ sha: z.string() }),
+    base: z.object({ ref: z.string() }).optional(),
     comments_url: z.string().url(),
     diff_url: z.string().url(),
     url: z.string().url(),
@@ -252,16 +256,18 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
     );
 
     let aiResponse: AIResponse;
+    let v2PipelineResult: import("../pipeline/types.js").PipelineResult | null = null;
 
     // ── V2 Pipeline ─────────────────────────────────────────────────
     if (USE_V2_PIPELINE) {
       try {
+        // C2: Extract PR context from webhook payload
         const prContext: PRContext = {
           prId,
           repoFullName,
-          prTitle: "",
-          prBody: "",
-          baseBranch: "",
+          prTitle: payload.pull_request.title || "",
+          prBody: payload.pull_request.body || "",
+          baseBranch: payload.pull_request.base?.ref || "",
           headSha: payload.pull_request.head.sha,
           ownerId,
           installationId: payload.installation.id,
@@ -278,6 +284,7 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
         }));
 
         const pipelineResult = await runReviewPipeline(prContext, prFiles);
+        v2PipelineResult = pipelineResult;
 
         aiResponse = {
           comment: pipelineResult.summary,
@@ -304,9 +311,12 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
         try {
           aiResponse = await safeRunPullRequestReview(reviewFiles, { ownerId });
         } catch (v1Err) {
-          const errMsg = v1Err instanceof Error ? v1Err.message : String(v1Err);
+          logger.error("WEBHOOK", "V1 fallback also failed", {
+            prId,
+            error: v1Err instanceof Error ? v1Err.message : String(v1Err),
+          });
           aiResponse = {
-            comment: `ReviewHog could not generate a complete AI summary for this pull request.\n\nPlease review the changes manually before merging.\n\n**Error:** ${errMsg}`,
+            comment: `ReviewHog could not generate a complete AI summary for this pull request.\n\nPlease review the changes manually before merging.`,
             conclusion: "neutral",
             rating: 3,
           };
@@ -323,14 +333,13 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
           filesReviewed: reviewFiles.length,
         });
       } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err);
         logger.error("WEBHOOK", "AI PR review threw unexpected error", {
           prId,
-          error: errMsg,
+          error: err instanceof Error ? err.message : String(err),
           stack: err instanceof Error ? err.stack : undefined,
         });
         aiResponse = {
-          comment: `ReviewHog could not generate a complete AI summary for this pull request.\n\nPlease review the changes manually before merging.\n\n**Error:** ${errMsg}`,
+          comment: `ReviewHog could not generate a complete AI summary for this pull request.\n\nPlease review the changes manually before merging.`,
           conclusion: "neutral",
           rating: 3,
         };
@@ -350,6 +359,7 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
 
     logger.debug("WEBHOOK", "PR review comment posted", { prId, pipeline: USE_V2_PIPELINE ? "v2" : "v1" });
 
+    // P5: Persist V2 pipeline stats alongside the review
     await prisma.review.create({
       data: {
         reviewId: makePullRequestReviewId(payload.pull_request.id.toString()),
@@ -359,6 +369,16 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
         rating: aiResponse.rating,
         prUrl: payload.pull_request.html_url ?? null,
         pipelineVersion: USE_V2_PIPELINE ? "v2" : "v1",
+        ...(v2PipelineResult ? {
+          riskScore: v2PipelineResult.riskScore,
+          findingsCount: v2PipelineResult.findings.length,
+          criticalCount: v2PipelineResult.findings.filter(f => f.severity === "critical").length,
+          highCount: v2PipelineResult.findings.filter(f => f.severity === "high").length,
+          tokensUsed: v2PipelineResult.stats.totalTokensUsed,
+          processingMs: v2PipelineResult.stats.processingTimeMs,
+          reviewersUsed: v2PipelineResult.stats.reviewersRun,
+          findingsJson: JSON.parse(JSON.stringify(v2PipelineResult.findings)),
+        } : {}),
       },
     });
 
@@ -472,7 +492,8 @@ export const pullRequestWebhook = async (
       return res.status(200).send("Review disabled for this repo");
     }
 
-    if (action !== "opened") {
+    // C1: Handle both 'opened' (new PR) and 'synchronize' (new commits pushed)
+    if (action !== "opened" && action !== "synchronize") {
       logger.debug("WEBHOOK", `Action '${action}' ignored`, { prId: validPayload.pull_request.id });
       return res.status(200).send("Action ignored");
     }

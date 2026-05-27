@@ -23,6 +23,7 @@ import { dispatchReviewers } from "./dispatch.js";
 import { deduplicateFindings } from "./dedup.js";
 import { filterAndRank } from "./filter.js";
 import { generatePRSummary } from "./summarizer.js";
+import { resolveSettings } from "../reviewers/base.js";
 import { logger } from "../utils/logger.js";
 
 // ─── Risk Score Computation ─────────────────────────────────────────────────
@@ -77,6 +78,9 @@ export async function runReviewPipeline(
     fileCount: rawFiles.length,
   });
 
+  // P1: Resolve AI settings once for the entire pipeline run
+  const aiSettings = await resolveSettings(ctx.ownerId);
+
   // Stage 1: Classify files
   const classified = classifyFiles(rawFiles);
   const skippedCount = rawFiles.length - classified.length;
@@ -107,10 +111,11 @@ export async function runReviewPipeline(
     })),
   });
 
-  // Stage 3: Dispatch to reviewers
-  const { findings: rawFindings, reviewersUsed } = await dispatchReviewers(
+  // Stage 3: Dispatch to reviewers (P0: parallel, P1: shared settings)
+  const { findings: rawFindings, reviewersUsed, totalTokensUsed } = await dispatchReviewers(
     chunks,
-    ctx
+    ctx,
+    aiSettings
   );
   for (const r of reviewersUsed) reviewersRun.add(r);
 
@@ -118,6 +123,7 @@ export async function runReviewPipeline(
     prId: ctx.prId,
     rawFindingsCount: rawFindings.length,
     reviewers: Array.from(reviewersRun),
+    totalTokensUsed,
   });
 
   // Stage 4: Deduplicate
@@ -143,7 +149,7 @@ export async function runReviewPipeline(
     filesSkipped: skippedCount,
     chunksProcessed: chunks.length,
     reviewersRun: Array.from(reviewersRun),
-    totalTokensUsed: 0, // Updated by summarizer
+    totalTokensUsed, // C3: Now tracks actual API usage
     processingTimeMs: Date.now() - startTime,
   };
 
@@ -164,6 +170,7 @@ export async function runReviewPipeline(
     rating,
     conclusion,
     findingsCount: filtered.length,
+    totalTokensUsed,
     processingTimeMs: stats.processingTimeMs,
   });
 
@@ -176,3 +183,4 @@ export async function runReviewPipeline(
     stats,
   };
 }
+

@@ -14,10 +14,11 @@ import type { Finding } from "./types.js";
  * are considered duplicates.
  */
 function dedupKey(f: Finding): string {
-  // Bucket lines into groups of 15 to catch overlapping ranges
+  // Bucket lines into groups of 5 to catch overlapping ranges
+  // without being so coarse that unrelated findings get merged
   const lineBucket = f.lineRange
-    ? Math.floor(parseInt(f.lineRange.split("-")[0], 10) / 15)
-    : 0;
+    ? `L${Math.floor(parseInt(f.lineRange.split("-")[0], 10) / 5)}`
+    : `no-line-${f.title.slice(0, 30)}`;
 
   return `${f.file}::${f.category}::${lineBucket}`;
 }

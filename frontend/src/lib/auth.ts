@@ -13,16 +13,22 @@ export function removeToken(): void {
 }
 
 /**
- * Wrapper around fetch that automatically adds the Authorization header
- * from localStorage if a token exists.
+ * Wrapper around fetch that includes credentials (cookies) for
+ * HttpOnly cookie-based auth, with localStorage token as fallback
+ * for backward compatibility during migration.
+ *
+ * SEC-1: Primary auth is now via HttpOnly cookie set by the backend.
+ * SEC-8: localStorage fallback will be removed in a future version.
  */
 export async function authFetch(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  const token = getToken();
   const headers = new Headers(options.headers);
 
+  // Fallback: if a localStorage token exists (pre-migration sessions),
+  // send it as Authorization header. New sessions use HttpOnly cookies.
+  const token = getToken();
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
@@ -30,5 +36,6 @@ export async function authFetch(
   return fetch(url, {
     ...options,
     headers,
+    credentials: "include", // SEC-1: Send HttpOnly cookies cross-origin
   });
 }

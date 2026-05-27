@@ -9,8 +9,18 @@ const ENCRYPTED_PREFIX = "v1";
 const PLAIN_PREFIX = "plain:";
 
 function getEncryptionKey(): Buffer | null {
-  const secret = process.env.AI_SETTINGS_ENCRYPTION_KEY || process.env.JWT_SECRET;
+  const dedicatedKey = process.env.AI_SETTINGS_ENCRYPTION_KEY;
+  const secret = dedicatedKey || process.env.JWT_SECRET;
   if (!secret) return null;
+
+  if (!dedicatedKey && process.env.JWT_SECRET) {
+    logger.warn(
+      "AI_SETTINGS",
+      "AI_SETTINGS_ENCRYPTION_KEY is not set — falling back to JWT_SECRET for encryption. " +
+      "Set a dedicated AI_SETTINGS_ENCRYPTION_KEY to decouple encryption from JWT signing."
+    );
+  }
+
   return crypto.createHash("sha256").update(secret).digest();
 }
 

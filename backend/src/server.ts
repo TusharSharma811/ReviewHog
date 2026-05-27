@@ -14,7 +14,9 @@ import userRoutes from "./routes/user.route.js";
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
 
-app.set("trust proxy", 1);
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
 
 // --- Rate Limiting ---
 const globalLimiter = rateLimit({

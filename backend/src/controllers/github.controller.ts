@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import axios from "axios";
 import prisma from "../db/prismaClient.js";
 import { logger } from "../utils/logger.js";
+import { decryptAISecret } from "../utils/aiSettings.js";
 import { RequestWithUser } from "../types/auth.js";
 
 // ─── GitHub Event Types ─────────────────────────────────────────────────────
@@ -56,8 +57,26 @@ export const getGitHubActivity = async (req: Request, res: Response) => {
       });
     }
 
+    // SEC-2: Decrypt the stored GitHub token
+    let githubToken: string | null;
+    try {
+      githubToken = decryptAISecret(user.githubToken);
+    } catch {
+      return res.status(200).json({
+        available: false,
+        message: "GitHub token could not be decrypted. Please re-login.",
+      });
+    }
+
+    if (!githubToken) {
+      return res.status(200).json({
+        available: false,
+        message: "Please re-login to enable GitHub activity tracking.",
+      });
+    }
+
     const headers = {
-      Authorization: `Bearer ${user.githubToken}`,
+      Authorization: `Bearer ${githubToken}`,
       Accept: "application/vnd.github+json",
     };
 

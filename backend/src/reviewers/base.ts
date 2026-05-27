@@ -226,6 +226,11 @@ function parseReviewerOutput(raw: string, reviewerType: ReviewerType): ReviewerO
   };
 }
 
+// ─── Public: Resolve Settings (call once per pipeline run) ──────────────────
+
+export { resolveSettings };
+export type { ResolvedSettings };
+
 // ─── Public: Run a Reviewer ─────────────────────────────────────────────────
 
 export interface RunReviewerOptions {
@@ -233,16 +238,32 @@ export interface RunReviewerOptions {
   systemPrompt: string;
   chunk: ReviewChunk;
   ctx: PRContext;
+  /** P1: Pre-resolved settings to avoid N+1 DB queries */
+  preResolvedSettings?: ResolvedSettings;
+}
+
+export interface ReviewerResult {
+  findings: Finding[];
+  tokensUsed: number;
 }
 
 export async function runReviewer(
   options: RunReviewerOptions
-): Promise<Finding[]> {
-  const { reviewerType, systemPrompt, chunk, ctx } = options;
-  const settings = await resolveSettings(ctx.ownerId, chunk.maxRiskTier, reviewerType);
+): Promise<ReviewerResult> {
+  const { reviewerType, systemPrompt, chunk, ctx, preResolvedSettings } = options;
+
+  // P1: Use pre-resolved settings if available, otherwise resolve per-call (backward compat)
+  const settings = preResolvedSettings
+    ? {
+        ...preResolvedSettings,
+        model: preResolvedSettings.model || selectModelForChunk(chunk.maxRiskTier, reviewerType),
+      }
+    : await resolveSettings(ctx.ownerId, chunk.maxRiskTier, reviewerType);
+
   const userPrompt = formatChunkForPrompt(chunk);
 
   let lastError: unknown;
+  let totalTokensUsed = 0;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
@@ -251,7 +272,8 @@ export async function runReviewer(
         prId: ctx.prId,
       });
 
-      const { content } = await callOpenRouter(systemPrompt, userPrompt, settings);
+      const { content, tokensUsed } = await callOpenRouter(systemPrompt, userPrompt, settings);
+      totalTokensUsed += tokensUsed;
 
       if (!content.trim()) {
         throw new Error("Empty response from model");
@@ -259,14 +281,25 @@ export async function runReviewer(
 
       const output = parseReviewerOutput(content, reviewerType);
 
+      // C5: Validate consistency between noIssues flag and findings array
+      if (output.noIssues && output.findings.length > 0) {
+        logger.warn("REVIEWER", `[${reviewerType}] Inconsistency: noIssues=true but ${output.findings.length} findings returned`, {
+          chunkId: chunk.id,
+          prId: ctx.prId,
+          findingsCount: output.findings.length,
+        });
+        // Trust the findings over the flag — the LLM contradicted itself
+      }
+
       logger.info("REVIEWER", `[${reviewerType}] Complete`, {
         chunkId: chunk.id,
         prId: ctx.prId,
         findingsCount: output.findings.length,
         noIssues: output.noIssues,
+        tokensUsed,
       });
 
-      return output.findings;
+      return { findings: output.findings, tokensUsed: totalTokensUsed };
     } catch (err) {
       lastError = err;
       logger.error("REVIEWER", `[${reviewerType}] Attempt ${attempt + 1} failed`, {
@@ -287,5 +320,5 @@ export async function runReviewer(
   });
 
   // Graceful degradation: return empty findings, don't crash the pipeline
-  return [];
+  return { findings: [], tokensUsed: totalTokensUsed };
 }
