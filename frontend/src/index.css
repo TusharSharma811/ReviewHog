@@ -291,8 +291,9 @@ html {
   transition: box-shadow 0.3s ease;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   .lg-navbar {
+    display: flex;
     top: 30px;
     gap: 8px;
     max-width: calc(100% - 40px);
