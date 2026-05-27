@@ -14,7 +14,11 @@ import userRoutes from "./routes/user.route.js";
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
 
-if (process.env.NODE_ENV === "production") {
+const IS_DEPLOYED =
+  process.env.NODE_ENV === "production" ||
+  (process.env.FRONTEND_URL?.startsWith("https://") ?? false);
+
+if (IS_DEPLOYED) {
   app.set("trust proxy", 1);
 }
 

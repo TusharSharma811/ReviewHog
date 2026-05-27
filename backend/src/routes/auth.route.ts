@@ -5,6 +5,10 @@ import { RequestWithUser } from "../types/auth.js";
 
 const router = Router();
 
+const IS_DEPLOYED =
+  process.env.NODE_ENV === "production" ||
+  (process.env.FRONTEND_URL?.startsWith("https://") ?? false);
+
 router.get("/github", githubLogin);
 router.get("/github/callback", githubCallback);
 
@@ -16,8 +20,9 @@ router.get("/me", verifyJWT, (req: Request, res: Response) => {
 router.post("/logout", (_req: Request, res: Response) => {
   res.clearCookie("token", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: (process.env.NODE_ENV === "production" ? "none" : "lax") as "none" | "lax",
+    secure: IS_DEPLOYED,
+    sameSite: (IS_DEPLOYED ? "none" : "lax") as "none" | "lax",
+    path: "/",
   });
   res.json({ message: "Logged out successfully" });
 });

@@ -33,13 +33,17 @@ interface GitHubEmail {
   verified: boolean;
 }
 
-const IS_PRODUCTION = process.env.NODE_ENV === "production";
+// Detect deployment: NODE_ENV=production OR FRONTEND_URL is HTTPS (handles
+// platforms like Render that don't set NODE_ENV automatically).
+const IS_DEPLOYED =
+  process.env.NODE_ENV === "production" ||
+  (process.env.FRONTEND_URL?.startsWith("https://") ?? false);
 
 // Cookie options for the JWT auth token
 const AUTH_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: IS_PRODUCTION,
-  sameSite: (IS_PRODUCTION ? "none" : "lax") as "none" | "lax",
+  secure: IS_DEPLOYED,
+  sameSite: (IS_DEPLOYED ? "none" : "lax") as "none" | "lax",
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days (matches JWT expiry)
   path: "/",
 };
@@ -47,8 +51,8 @@ const AUTH_COOKIE_OPTIONS = {
 // Cookie options for the OAuth state token (short-lived)
 const STATE_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: IS_PRODUCTION,
-  sameSite: (IS_PRODUCTION ? "none" : "lax") as "none" | "lax",
+  secure: IS_DEPLOYED,
+  sameSite: (IS_DEPLOYED ? "none" : "lax") as "none" | "lax",
   maxAge: 10 * 60 * 1000, // 10 minutes
   path: "/",
 };
@@ -93,8 +97,8 @@ export const githubCallback = async (req: Request, res: Response) => {
   // Clear the state cookie — it's single-use
   res.clearCookie("oauth_state", {
     httpOnly: true,
-    secure: IS_PRODUCTION,
-    sameSite: (IS_PRODUCTION ? "none" : "lax") as "none" | "lax",
+    secure: IS_DEPLOYED,
+    sameSite: (IS_DEPLOYED ? "none" : "lax") as "none" | "lax",
     path: "/",
   });
 
