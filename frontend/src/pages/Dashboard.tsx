@@ -9,7 +9,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
 import { toast } from "sonner";
-import { setToken, removeToken, getToken, authFetch } from "@/lib/auth";
+import { setToken, removeToken, authFetch } from "@/lib/auth";
 import { useTheme } from "@/lib/useTheme";
 import LOGO from "../assets/47509314-ae8b-44c2-b8c0-5d5a8a7ff228.png";
 
