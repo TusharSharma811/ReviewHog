@@ -340,10 +340,10 @@ const Dashboard = () => {
   const pagination = userData?.pagination;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background max-w-full overflow-x-hidden">
       {/* Header */}
       <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 md:px-6 py-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2.5 sm:space-x-3">
               <img src={LOGO} alt="ReviewHog Logo" className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg" />
@@ -368,14 +368,14 @@ const Dashboard = () => {
               </button>
               <button
                 onClick={() => navigate("/settings")}
-                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-card hover:bg-muted h-9 px-4 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-card hover:bg-muted h-9 w-9 sm:w-auto sm:px-4 justify-center transition-colors cursor-pointer"
               >
                 <SettingsIcon className="h-4 w-4" />
                 <span className="hidden sm:inline">Settings</span>
               </button>
               <button
                 onClick={handleLogout}
-                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-card hover:bg-muted h-9 px-4 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-card hover:bg-muted h-9 w-9 sm:w-auto sm:px-4 justify-center transition-colors cursor-pointer"
               >
                 <LogOut className="h-4 w-4" />
                 <span className="hidden sm:inline">Logout</span>
@@ -386,7 +386,7 @@ const Dashboard = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-8">
         {/* Install GitHub App Banner */}
         {repositories.length === 0 && (
           <div className="mb-8 p-6 rounded-2xl border border-indigo-200 bg-indigo-50/50">

@@ -99,7 +99,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
       {/* Overview Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Reviews */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6 overflow-hidden">
           <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-indigo-50 mb-3 sm:mb-4">
             <GitPullRequest className="h-5 w-5 text-indigo-500" />
           </div>
@@ -111,7 +111,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
         </div>
 
         {/* Issues Found */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6 overflow-hidden">
           <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-red-50 mb-3 sm:mb-4">
             <Bug className="h-5 w-5 text-red-500" />
           </div>
@@ -123,7 +123,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
         </div>
 
         {/* Clean Passes */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6 overflow-hidden">
           <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-emerald-50 mb-3 sm:mb-4">
             <CheckCircle className="h-5 w-5 text-emerald-500" />
           </div>
@@ -135,7 +135,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
         </div>
 
         {/* Quality Score */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6 overflow-hidden">
           <div className={`flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl ${qualityBgColor(overview.qualityScore)} mb-3 sm:mb-4`}>
             <TrendingUp className={`h-5 w-5 ${qualityColor(overview.qualityScore)}`} />
           </div>
@@ -159,7 +159,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
       {/* Activity Chart + Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Daily Activity Chart */}
-        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-4 sm:p-6">
+        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-4 sm:p-6 overflow-hidden">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-base sm:text-lg font-semibold text-foreground">Review Activity</h3>
             <span className="text-xs text-muted-foreground">Last 7 days</span>
@@ -217,7 +217,7 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
         </div>
 
         {/* Severity Breakdown */}
-        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 overflow-hidden">
           <h3 className="text-base sm:text-lg font-semibold text-foreground mb-4 sm:mb-6">Severity Breakdown</h3>
           <div className="space-y-4">
             {(() => {
@@ -276,9 +276,9 @@ export const MetricsSection = ({ metrics, loading }: MetricsSectionProps) => {
 
       {/* Top Repos */}
       {topRepos.length > 0 && (
-        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-foreground">Most Active Repos</h3>
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 mb-4">
+            <h3 className="text-base sm:text-lg font-semibold text-foreground">Most Active Repos</h3>
             {overview.lastReviewAt && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Clock className="h-3 w-3" />

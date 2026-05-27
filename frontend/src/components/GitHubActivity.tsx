@@ -88,7 +88,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
       {/* Stat Cards Row 1: Activity Overview */}
       <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
         {/* Pushes */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4 overflow-hidden">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 mb-3">
             <ArrowUpRight className="h-4 w-4 text-blue-500" />
           </div>
@@ -100,7 +100,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* Commits */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4 overflow-hidden">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 mb-3">
             <GitCommit className="h-4 w-4 text-purple-500" />
           </div>
@@ -112,7 +112,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* PRs Opened */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4 overflow-hidden">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 mb-3">
             <GitPullRequest className="h-4 w-4 text-emerald-500" />
           </div>
@@ -124,7 +124,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* PRs Merged */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4 overflow-hidden">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 mb-3">
             <GitPullRequest className="h-4 w-4 text-violet-500" />
           </div>
@@ -136,7 +136,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* Issues */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4 overflow-hidden">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 mb-3">
             <AlertCircle className="h-4 w-4 text-amber-500" />
           </div>
@@ -148,7 +148,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* Branches */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4">
+        <div className="card-hover rounded-2xl border border-border bg-card p-3 sm:p-4 overflow-hidden">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-50 mb-3">
             <GitBranch className="h-4 w-4 text-cyan-500" />
           </div>
@@ -161,7 +161,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
       {/* Streak + Most Active Repo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {/* Contribution Streak */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6 overflow-hidden">
           <div className="flex items-center gap-3 mb-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50">
               <Flame className={`h-5 w-5 ${(contributionStreak ?? 0) > 0 ? "text-orange-500" : "text-muted-foreground/40"}`} />
@@ -186,7 +186,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* Most Active Repo */}
-        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6">
+        <div className="card-hover rounded-2xl border border-border bg-card p-4 sm:p-6 overflow-hidden">
           <div className="flex items-center gap-3 mb-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50">
               <Zap className="h-5 w-5 text-indigo-500" />
@@ -215,7 +215,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
       {/* Push Activity + Language Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Daily Pushes Chart */}
-        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-4 sm:p-6">
+        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-4 sm:p-6 overflow-hidden">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-muted-foreground" />
@@ -278,7 +278,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
         </div>
 
         {/* Language Breakdown */}
-        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 overflow-hidden">
           <div className="flex items-center gap-2 mb-6">
             <Code2 className="h-5 w-5 text-muted-foreground" />
             <h3 className="text-lg font-semibold text-foreground">Languages</h3>
@@ -316,7 +316,7 @@ export const GitHubActivitySection = ({ data, loading }: GitHubActivityProps) =>
 
       {/* Per-Repo Activity Breakdown */}
       {repoActivity && repoActivity.length > 0 && (
-        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 overflow-hidden">
           <h3 className="text-lg font-semibold text-foreground mb-4">Repo Activity Breakdown</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

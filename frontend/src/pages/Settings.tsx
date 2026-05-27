@@ -72,9 +72,9 @@ const Settings = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background max-w-full overflow-x-hidden">
       <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 md:px-6 py-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center space-x-3 min-w-0">
               <img src={LOGO} alt="ReviewHog Logo" className="h-8 w-8 shrink-0" />
@@ -105,7 +105,7 @@ const Settings = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-8">
         <div className="mb-8 flex items-center gap-3">
           <div className="h-10 w-10 rounded-lg bg-card border border-border flex items-center justify-center">
             <SettingsIcon className="h-5 w-5 text-foreground" />

@@ -127,9 +127,17 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+  }
+  .container {
+    max-width: 100%;
   }
 }
 
