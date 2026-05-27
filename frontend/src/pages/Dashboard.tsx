@@ -163,10 +163,12 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    // SEC-1: Clean up any old URL-based token params (backward compat)
+    // Capture JWT from OAuth redirect URL, store it, and clean the URL.
+    // This is the primary auth mechanism for cross-origin deployments
+    // (e.g., Vercel frontend + Render backend) where third-party cookies
+    // are blocked by modern browsers.
     const urlToken = searchParams.get("token");
     if (urlToken) {
-      // Legacy: if a token is in the URL, store it and clean up
       setToken(urlToken);
       const url = new URL(window.location.href);
       url.searchParams.delete("token");
@@ -174,8 +176,7 @@ const Dashboard = () => {
       window.history.replaceState({}, "", url.toString());
     }
 
-    // Auth is now cookie-based — fetchData will return 401/403 if no valid cookie.
-    // Only redirect if there's no cookie AND no localStorage token.
+    // fetchData will send the token as Authorization header.
     fetchData().then((data) => {
       if (isNewUser) {
         toast.success("Welcome to ReviewHog! 🎉", {

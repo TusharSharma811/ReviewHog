@@ -13,27 +13,24 @@ export function removeToken(): void {
 }
 
 /**
- * Wrapper around fetch that includes credentials (cookies) for
- * HttpOnly cookie-based auth.
- *
- * SEC-1: Auth is via HttpOnly cookie set by the backend.
- * SEC-8: localStorage fallback has been removed — stale tokens
- *        were causing 403 errors by being sent as Authorization
- *        headers that overrode valid cookie auth.
+ * Wrapper around fetch that:
+ * 1. Sends the JWT as an Authorization header (primary — works cross-origin)
+ * 2. Includes credentials for HttpOnly cookies (fallback — same-site only)
  */
 export async function authFetch(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  // Clear any stale localStorage tokens from pre-migration sessions
-  // to prevent them from being picked up by other code.
-  const staleToken = getToken();
-  if (staleToken) {
-    removeToken();
+  const headers = new Headers(options.headers);
+
+  const token = getToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   return fetch(url, {
     ...options,
-    credentials: "include", // SEC-1: Send HttpOnly cookies cross-origin
+    headers,
+    credentials: "include", // Also send cookies if available
   });
 }

@@ -176,12 +176,15 @@ export const githubCallback = async (req: Request, res: Response) => {
       email: user.email,
     });
 
-    // SEC-1: Set JWT as HttpOnly cookie instead of URL parameter
+    // Set JWT as HttpOnly cookie (works for same-site deployments)
     res.cookie("token", userToken, AUTH_COOKIE_OPTIONS);
 
+    // Also pass token as URL param for cross-origin deployments where
+    // third-party cookies are blocked by the browser (Chrome 2024+).
+    // The frontend captures this immediately and cleans the URL.
     const redirectUrl = isNewUser
-      ? `${process.env.FRONTEND_URL}/dashboard?new=true`
-      : `${process.env.FRONTEND_URL}/dashboard`;
+      ? `${process.env.FRONTEND_URL}/dashboard?token=${userToken}&new=true`
+      : `${process.env.FRONTEND_URL}/dashboard?token=${userToken}`;
 
     return res.redirect(redirectUrl);
   } catch (err) {
