@@ -3,7 +3,7 @@ import { logger } from "./logger.js";
 
 export const OPENROUTER_CHAT_COMPLETIONS_URL = "https://openrouter.ai/api/v1/chat/completions";
 export const DEFAULT_OPENROUTER_MODEL =
-  process.env.OPENROUTER_MODEL?.trim() || "nvidia/nemotron-3-super-120b-a12b:free";
+  process.env.OPENROUTER_MODEL?.trim() || "deepseek/deepseek-r1-0528:free";
 
 const ENCRYPTED_PREFIX = "v1";
 const PLAIN_PREFIX = "plain:";

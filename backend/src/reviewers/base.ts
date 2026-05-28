@@ -46,8 +46,8 @@ interface ResolvedSettings {
  */
 const MODEL_TIERS = {
   premium: process.env.AI_MODEL_PREMIUM || "deepseek/deepseek-r1-0528:free",
-  standard: process.env.AI_MODEL_STANDARD || "nvidia/nemotron-3-super-120b-a12b:free",
-  economy: process.env.AI_MODEL_ECONOMY || "nvidia/nemotron-3-super-120b-a12b:free",
+  standard: process.env.AI_MODEL_STANDARD || "deepseek/deepseek-r1-0528:free",
+  economy: process.env.AI_MODEL_ECONOMY || "deepseek/deepseek-r1-0528:free",
 };
 
 function selectModelForChunk(
