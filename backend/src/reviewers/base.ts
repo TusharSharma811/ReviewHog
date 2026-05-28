@@ -41,11 +41,12 @@ interface ResolvedSettings {
 
 /**
  * Routes to different models based on risk tier and reviewer type.
- * User's custom model always takes priority if configured.
+ * All tiers default to FREE models. Override via env vars if you have a paid key.
+ * User's saved model OR system default always take priority over tiered routing.
  */
 const MODEL_TIERS = {
-  premium: process.env.AI_MODEL_PREMIUM || "anthropic/claude-sonnet-4",
-  standard: process.env.AI_MODEL_STANDARD || "google/gemini-2.5-flash",
+  premium: process.env.AI_MODEL_PREMIUM || "deepseek/deepseek-r1-0528:free",
+  standard: process.env.AI_MODEL_STANDARD || "nvidia/nemotron-3-super-120b-a12b:free",
   economy: process.env.AI_MODEL_ECONOMY || "nvidia/nemotron-3-super-120b-a12b:free",
 };
 
@@ -53,7 +54,7 @@ function selectModelForChunk(
   riskTier: import("../pipeline/types.js").RiskTier,
   reviewerType: import("../pipeline/types.js").ReviewerType
 ): string {
-  // Security reviewer always gets the best model
+  // Security reviewer gets the most capable free model
   if (reviewerType === "security") return MODEL_TIERS.premium;
 
   // Route by risk
@@ -61,7 +62,6 @@ function selectModelForChunk(
     case "critical":
       return MODEL_TIERS.premium;
     case "high":
-      return MODEL_TIERS.standard;
     case "medium":
       return MODEL_TIERS.standard;
     case "low":
@@ -90,13 +90,14 @@ async function resolveSettings(
     }
   }
 
-  // User's custom model always takes priority
+  // Priority: user's saved model → system default → tiered routing
   let model: string;
   if (user?.aiModel?.trim()) {
+    // User explicitly saved a model in settings
     model = getEffectiveOpenRouterModel(user.aiModel);
-  } else if (riskTier && reviewerType) {
-    model = selectModelForChunk(riskTier, reviewerType);
   } else {
+    // Use the system default (env var or hardcoded nvidia)
+    // This ensures the model shown in the UI is actually what runs
     model = getEffectiveOpenRouterModel(null);
   }
 
