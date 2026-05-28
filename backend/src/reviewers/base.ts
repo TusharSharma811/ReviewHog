@@ -45,9 +45,9 @@ interface ResolvedSettings {
  * User's saved model OR system default always take priority over tiered routing.
  */
 const MODEL_TIERS = {
-  premium: process.env.AI_MODEL_PREMIUM || "deepseek/deepseek-r1-0528:free",
-  standard: process.env.AI_MODEL_STANDARD || "deepseek/deepseek-r1-0528:free",
-  economy: process.env.AI_MODEL_ECONOMY || "deepseek/deepseek-r1-0528:free",
+  premium: process.env.AI_MODEL_PREMIUM || "deepseek/deepseek-v4-flash:free",
+  standard: process.env.AI_MODEL_STANDARD || "deepseek/deepseek-v4-flash:free",
+  economy: process.env.AI_MODEL_ECONOMY || "deepseek/deepseek-v4-flash:free",
 };
 
 function selectModelForChunk(
