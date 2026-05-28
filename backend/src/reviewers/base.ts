@@ -27,8 +27,9 @@ import { logger } from "../utils/logger.js";
 
 const REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 90000);
 const MAX_OUTPUT_TOKENS = Number(process.env.AI_MAX_TOKENS || 8000);
-const MAX_RETRIES = 2;
-const BASE_DELAY_MS = 2000;
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 3000;
+const RATE_LIMIT_DELAY_MS = 15000; // Extra wait on 429
 
 // ─── AI Settings Resolution ────────────────────────────────────────────────
 
@@ -257,6 +258,7 @@ export interface RunReviewerOptions {
 export interface ReviewerResult {
   findings: Finding[];
   tokensUsed: number;
+  failed?: boolean; // true if ALL retries exhausted (rate-limited, timeout, etc.)
 }
 
 export async function runReviewer(
@@ -314,13 +316,22 @@ export async function runReviewer(
       return { findings: output.findings, tokensUsed: totalTokensUsed };
     } catch (err) {
       lastError = err;
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const is429 = errMsg.includes("429") || errMsg.includes("rate");
+
       logger.error("REVIEWER", `[${reviewerType}] Attempt ${attempt + 1} failed`, {
         chunkId: chunk.id,
-        error: err instanceof Error ? err.message : String(err),
+        error: errMsg,
+        rateLimited: is429,
       });
 
       if (attempt < MAX_RETRIES - 1) {
-        await new Promise((r) => setTimeout(r, BASE_DELAY_MS * Math.pow(2, attempt)));
+        // Wait longer on rate limits (429)
+        const delay = is429
+          ? RATE_LIMIT_DELAY_MS * (attempt + 1)
+          : BASE_DELAY_MS * Math.pow(2, attempt);
+        logger.debug("REVIEWER", `[${reviewerType}] Waiting ${delay}ms before retry`, { chunkId: chunk.id });
+        await new Promise((r) => setTimeout(r, delay));
       }
     }
   }
@@ -331,6 +342,6 @@ export async function runReviewer(
     lastError: lastError instanceof Error ? lastError.message : String(lastError),
   });
 
-  // Graceful degradation: return empty findings, don't crash the pipeline
-  return { findings: [], tokensUsed: totalTokensUsed };
+  // Return failed=true so pipeline knows this reviewer couldn't run
+  return { findings: [], tokensUsed: totalTokensUsed, failed: true };
 }

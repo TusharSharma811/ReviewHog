@@ -110,6 +110,7 @@ export interface DispatchResult {
   findings: Finding[];
   reviewersUsed: ReviewerType[];
   totalTokensUsed: number; // C3: Aggregated token usage
+  allReviewersFailed: boolean; // true if every reviewer failed (rate-limited, errors, etc.)
 }
 
 export async function dispatchReviewers(
@@ -120,6 +121,8 @@ export async function dispatchReviewers(
   const allFindings: Finding[] = [];
   const reviewersUsed = new Set<ReviewerType>();
   let totalTokensUsed = 0;
+  let totalReviewerCalls = 0;
+  let failedReviewerCalls = 0;
 
   // P0: Process all chunks in parallel with a concurrency cap
   const limit = pLimit(CHUNK_CONCURRENCY);
@@ -136,50 +139,58 @@ export async function dispatchReviewers(
           reviewers: selectedReviewers,
         });
 
-        // Run all selected reviewers in parallel for this chunk
-        const results = await Promise.allSettled(
-          selectedReviewers.map((reviewerType) => {
-            const systemPrompt = REVIEWER_PROMPTS[reviewerType];
-            if (!systemPrompt) {
-              logger.warn("DISPATCH", `No prompt for reviewer: ${reviewerType}`);
-              return Promise.resolve({ findings: [] as Finding[], tokensUsed: 0 });
-            }
+        // Run reviewers SEQUENTIALLY to avoid rate-limiting on free tiers
+        const chunkFindings: Finding[] = [];
+        let chunkTokens = 0;
+        const chunkReviewers: ReviewerType[] = [];
+        let chunkFailed = 0;
 
-            return runReviewer({
+        for (const reviewerType of selectedReviewers) {
+          const systemPrompt = REVIEWER_PROMPTS[reviewerType];
+          if (!systemPrompt) {
+            logger.warn("DISPATCH", `No prompt for reviewer: ${reviewerType}`);
+            continue;
+          }
+
+          try {
+            const result = await runReviewer({
               reviewerType,
               systemPrompt,
               chunk,
               ctx,
               preResolvedSettings,
             });
-          })
-        );
 
-        // Collect findings and tokens from this chunk
-        const chunkFindings: Finding[] = [];
-        let chunkTokens = 0;
-        const chunkReviewers: ReviewerType[] = [];
+            chunkFindings.push(...result.findings);
+            chunkTokens += result.tokensUsed;
+            chunkReviewers.push(reviewerType);
 
-        for (let i = 0; i < results.length; i++) {
-          const result = results[i];
-          if (result.status === "fulfilled") {
-            chunkFindings.push(...result.value.findings);
-            chunkTokens += result.value.tokensUsed;
-            chunkReviewers.push(selectedReviewers[i]);
-          } else {
-            logger.error("DISPATCH", "Reviewer promise rejected", {
+            if (result.failed) {
+              chunkFailed++;
+            }
+          } catch (error) {
+            chunkFailed++;
+            logger.error("DISPATCH", "Reviewer threw", {
               prId: ctx.prId,
               chunkId: chunk.id,
-              reviewer: selectedReviewers[i],
-              error:
-                result.reason instanceof Error
-                  ? result.reason.message
-                  : String(result.reason),
+              reviewer: reviewerType,
+              error: error instanceof Error ? error.message : String(error),
             });
+          }
+
+          // Small delay between sequential reviewers to avoid back-to-back rate limits
+          if (selectedReviewers.indexOf(reviewerType) < selectedReviewers.length - 1) {
+            await new Promise((r) => setTimeout(r, 2000));
           }
         }
 
-        return { findings: chunkFindings, tokensUsed: chunkTokens, reviewers: chunkReviewers };
+        return {
+          findings: chunkFindings,
+          tokensUsed: chunkTokens,
+          reviewers: chunkReviewers,
+          totalCalls: selectedReviewers.length,
+          failedCalls: chunkFailed,
+        };
       })
     )
   );
@@ -190,6 +201,8 @@ export async function dispatchReviewers(
       allFindings.push(...result.value.findings);
       totalTokensUsed += result.value.tokensUsed;
       for (const r of result.value.reviewers) reviewersUsed.add(r);
+      totalReviewerCalls += result.value.totalCalls;
+      failedReviewerCalls += result.value.failedCalls;
     } else {
       logger.error("DISPATCH", "Chunk processing failed", {
         prId: ctx.prId,
@@ -201,9 +214,16 @@ export async function dispatchReviewers(
     }
   }
 
+  const allReviewersFailed = totalReviewerCalls > 0 && failedReviewerCalls === totalReviewerCalls;
+
+  if (allReviewersFailed) {
+    logger.error("DISPATCH", "ALL reviewers failed — review result is unreliable", { prId: ctx.prId });
+  }
+
   return {
     findings: allFindings,
     reviewersUsed: Array.from(reviewersUsed),
     totalTokensUsed,
+    allReviewersFailed,
   };
 }

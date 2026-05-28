@@ -112,7 +112,7 @@ export async function runReviewPipeline(
   });
 
   // Stage 3: Dispatch to reviewers (P0: parallel, P1: shared settings)
-  const { findings: rawFindings, reviewersUsed, totalTokensUsed } = await dispatchReviewers(
+  const { findings: rawFindings, reviewersUsed, totalTokensUsed, allReviewersFailed } = await dispatchReviewers(
     chunks,
     ctx,
     aiSettings
@@ -124,7 +124,34 @@ export async function runReviewPipeline(
     rawFindingsCount: rawFindings.length,
     reviewers: Array.from(reviewersRun),
     totalTokensUsed,
+    allReviewersFailed,
   });
+
+  // ⚠ CRITICAL: If all reviewers failed, do NOT report a clean result
+  if (allReviewersFailed) {
+    logger.error("PIPELINE", "All reviewers failed — returning error result", { prId: ctx.prId });
+
+    const errorStats: PipelineStats = {
+      filesReviewed: classified.length,
+      filesSkipped: skippedCount,
+      chunksProcessed: chunks.length,
+      reviewersRun: Array.from(reviewersRun),
+      totalTokensUsed,
+      processingTimeMs: Date.now() - startTime,
+    };
+
+    return {
+      findings: [],
+      riskScore: -1,
+      conclusion: "failure" as Conclusion,
+      rating: 0,
+      summary: "⚠️ **Review could not be completed.** All AI reviewers failed due to rate limiting or API errors. " +
+        "Please try again later, or configure your own API key in Settings for reliable reviews.\n\n" +
+        `> Attempted reviewers: ${Array.from(reviewersRun).join(", ") || "none"}\n` +
+        `> Processed in ${((Date.now() - startTime) / 1000).toFixed(1)}s | Pipeline v2`,
+      stats: errorStats,
+    };
+  }
 
   // Stage 4: Deduplicate
   const deduped = deduplicateFindings(rawFindings);
@@ -183,4 +210,5 @@ export async function runReviewPipeline(
     stats,
   };
 }
+
 
