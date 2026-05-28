@@ -35,7 +35,16 @@ const BASE_DELAY_MS = 2000;
 interface ResolvedSettings {
   apiKey: string | null;
   model: string;
+  apiBaseUrl: string; // Provider-specific API endpoint
 }
+
+// ─── Provider API URLs ──────────────────────────────────────────────────────
+
+const PROVIDER_URLS: Record<string, string> = {
+  openrouter: "https://openrouter.ai/api/v1/chat/completions",
+  openai: "https://api.openai.com/v1/chat/completions",
+  default: "https://openrouter.ai/api/v1/chat/completions",
+};
 
 // ─── Model Routing ──────────────────────────────────────────────────────────
 
@@ -78,7 +87,7 @@ async function resolveSettings(
 ): Promise<ResolvedSettings> {
   const user = await prisma.user.findUnique({
     where: { id: ownerId },
-    select: { aiApiKey: true, aiModel: true },
+    select: { aiApiKey: true, aiModel: true, aiProvider: true, aiBaseUrl: true },
   });
 
   let apiKey: string | null = null;
@@ -90,20 +99,22 @@ async function resolveSettings(
     }
   }
 
-  // Priority: user's saved model → system default → tiered routing
+  // Priority: user's saved model → system default
   let model: string;
   if (user?.aiModel?.trim()) {
-    // User explicitly saved a model in settings
     model = getEffectiveOpenRouterModel(user.aiModel);
   } else {
-    // Use the system default (env var or hardcoded nvidia)
-    // This ensures the model shown in the UI is actually what runs
     model = getEffectiveOpenRouterModel(null);
   }
+
+  // Resolve API base URL: user custom URL → provider default → OpenRouter
+  const provider = user?.aiProvider || "default";
+  const apiBaseUrl = user?.aiBaseUrl?.trim() || PROVIDER_URLS[provider] || PROVIDER_URLS.default;
 
   return {
     apiKey: apiKey || getDefaultOpenRouterApiKey(),
     model,
+    apiBaseUrl,
   };
 }
 
@@ -162,7 +173,7 @@ async function callOpenRouter(
   }
 
   const response = await axios.post<OpenRouterResponse>(
-    OPENROUTER_CHAT_COMPLETIONS_URL,
+    settings.apiBaseUrl,
     {
       model: settings.model,
       messages: [

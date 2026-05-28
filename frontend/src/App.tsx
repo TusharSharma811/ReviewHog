@@ -5,6 +5,7 @@ import Settings from "./pages/Settings";
 import ReviewDetail from "./pages/ReviewDetail";
 import ReviewHistory from "./pages/ReviewHistory";
 import ReviewCompare from "./pages/ReviewCompare";
+import Onboarding from "./pages/Onboarding";
 import { Toaster } from "sonner";
 import ErrorBoundary from "./components/ErrorBoundary";
 
@@ -24,6 +25,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/review/:id" element={<ReviewDetail />} />
           <Route path="/history" element={<ReviewHistory />} />
           <Route path="/compare" element={<ReviewCompare />} />

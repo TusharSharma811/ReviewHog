@@ -18,10 +18,13 @@ model User {
   name        String?
   avatarUrl   String?
   githubToken String?    // GitHub OAuth access token for fetching activity
-  aiApiKey    String?    // Encrypted user OpenRouter API key
-  aiModel     String?    // User-selected OpenRouter model
+  aiApiKey    String?    // Encrypted user AI API key (AES-256-GCM)
+  aiModel     String?    // User-selected model identifier
+  aiProvider  String     @default("default") // "openrouter" | "openai" | "default"
+  aiBaseUrl   String?    // Custom API base URL (for self-hosted/proxy endpoints)
   aiReviewsEnabled Boolean @default(true)
   defaultRepoReviewOn Boolean @default(true)
+  onboardingComplete Boolean @default(false)
   repos       Repo[]
   reviews     Review[]
   insights    Insight?

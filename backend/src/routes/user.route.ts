@@ -10,6 +10,8 @@ import {
   updateAISettings,
   getReviewSettings,
   updateReviewSettings,
+  getOnboardingStatus,
+  completeOnboarding,
 } from "../controllers/user.controller.js";
 import { getGitHubActivity } from "../controllers/github.controller.js";
 import {
@@ -56,5 +58,9 @@ router.get("/repos/:repoId/badge.svg", getRepoBadge);
 
 // New: GitHub issue creation
 router.post("/github/create-issue", verifyJWT, createGitHubIssue);
+
+// New: Onboarding
+router.get("/me/onboarding", verifyJWT, getOnboardingStatus);
+router.post("/me/onboarding", verifyJWT, completeOnboarding);
 
 export default router;

@@ -79,6 +79,22 @@ const Dashboard = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Check onboarding status on mount
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      try {
+        const res = await authFetch(`${API_BASE_URL}/api/users/data/me/onboarding`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.onboardingComplete) {
+            navigate("/onboarding", { replace: true });
+          }
+        }
+      } catch { /* non-critical — continue to dashboard */ }
+    };
+    checkOnboarding();
+  }, [navigate]);
+
   const fetchData = useCallback(async (page = 1, silent = false) => {
     try {
       if (!silent) {

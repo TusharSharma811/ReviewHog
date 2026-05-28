@@ -547,3 +547,69 @@ export const getEnhancedMetrics = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+// ─── Onboarding ─────────────────────────────────────────────────────────────
+
+export const getOnboardingStatus = async (req: Request, res: Response) => {
+  const userId = (req as RequestWithUser).user?.id;
+  if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { onboardingComplete: true, aiProvider: true, aiModel: true },
+    });
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.status(200).json({
+      onboardingComplete: user.onboardingComplete,
+      aiProvider: user.aiProvider,
+      aiModel: user.aiModel,
+    });
+  } catch (error) {
+    logger.error("USER", "Error fetching onboarding status", { error: error instanceof Error ? error.message : String(error) });
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const onboardingSchema = z.object({
+  provider: z.enum(["openrouter", "openai", "default"]),
+  apiKey: z.string().optional(),
+  model: z.string().optional(),
+  baseUrl: z.string().url().optional(),
+});
+
+export const completeOnboarding = async (req: Request, res: Response) => {
+  const userId = (req as RequestWithUser).user?.id;
+  if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+  const parsed = onboardingSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0].message });
+
+  const { provider, apiKey, model, baseUrl } = parsed.data;
+
+  try {
+    const updateData: Record<string, unknown> = {
+      aiProvider: provider,
+      aiModel: model || null,
+      aiBaseUrl: baseUrl || null,
+      onboardingComplete: true,
+    };
+
+    // Encrypt the API key if provided (AES-256-GCM)
+    if (apiKey && apiKey.trim()) {
+      updateData.aiApiKey = encryptAISecret(apiKey.trim());
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    res.status(200).json({ message: "Onboarding complete", provider });
+  } catch (error) {
+    logger.error("USER", "Error completing onboarding", { error: error instanceof Error ? error.message : String(error) });
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
