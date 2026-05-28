@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, Edit3, Shield, X, Check, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Edit3, Shield, Check, AlertTriangle } from "lucide-react";
 import { API_BASE_URL } from "@/config";
 import { authFetch } from "@/lib/auth";
 import { toast } from "sonner";

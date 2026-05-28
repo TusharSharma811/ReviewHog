@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Copy, Check, Image, ExternalLink } from "lucide-react";
+import { Copy, Check, Image } from "lucide-react";
 import { API_BASE_URL } from "@/config";
 import { authFetch } from "@/lib/auth";
 import { toast } from "sonner";

@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { API_BASE_URL } from "@/config";
 import { authFetch } from "@/lib/auth";
-import { useTheme } from "@/lib/useTheme";
+
 import Loader from "@/components/Loader";
 import { toast } from "sonner";
 import LOGO from "../assets/47509314-ae8b-44c2-b8c0-5d5a8a7ff228.png";
@@ -91,7 +91,7 @@ function riskGradient(score: number): string {
 
 // ─── Finding Card Component ────────────────────────────────────────────────
 
-function FindingCard({ finding, repoName, onCreateIssue }: { finding: Finding; repoName: string; onCreateIssue: (f: Finding) => void }) {
+function FindingCard({ finding, onCreateIssue }: { finding: Finding; onCreateIssue: (f: Finding) => void }) {
   const [expanded, setExpanded] = useState(false);
   const config = SEVERITY_CONFIG[finding.severity];
 
@@ -156,7 +156,6 @@ function FindingCard({ finding, repoName, onCreateIssue }: { finding: Finding; r
 const ReviewDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isDark } = useTheme();
   const [review, setReview] = useState<ReviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -372,7 +371,7 @@ const ReviewDetail = () => {
             <div className="space-y-2">
               {(["critical", "high", "medium", "low"] as const).map(severity =>
                 grouped[severity].map(f => (
-                  <FindingCard key={f.id} finding={f} repoName={review.repo.name} onCreateIssue={handleCreateIssue} />
+                  <FindingCard key={f.id} finding={f} onCreateIssue={handleCreateIssue} />
                 ))
               )}
             </div>

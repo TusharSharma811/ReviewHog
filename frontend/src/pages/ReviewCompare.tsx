@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { ArrowLeft, Star, ArrowRight, ArrowUpRight, ArrowDownRight, Minus, GitPullRequest } from "lucide-react";
+import { ArrowLeft, Star, ArrowRight, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import { API_BASE_URL } from "@/config";
 import { authFetch } from "@/lib/auth";
 import Loader from "@/components/Loader";
