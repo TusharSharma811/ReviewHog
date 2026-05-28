@@ -44,6 +44,8 @@ interface ResolvedSettings {
 const PROVIDER_URLS: Record<string, string> = {
   openrouter: "https://openrouter.ai/api/v1/chat/completions",
   openai: "https://api.openai.com/v1/chat/completions",
+  anthropic: "https://api.anthropic.com/v1/messages",
+  google: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
   default: "https://openrouter.ai/api/v1/chat/completions",
 };
 
@@ -164,13 +166,67 @@ function normalizeContent(content: unknown): string {
   return content == null ? "" : JSON.stringify(content);
 }
 
-async function callOpenRouter(
+async function callLLMProvider(
   systemPrompt: string,
   userPrompt: string,
   settings: ResolvedSettings
 ): Promise<{ content: string; tokensUsed: number }> {
   if (!settings.apiKey) {
-    throw new Error("No OpenRouter API key configured");
+    throw new Error("No API key configured");
+  }
+
+  const isAnthropic = settings.apiBaseUrl.includes("anthropic.com");
+
+  if (isAnthropic) {
+    // Anthropic Messages API — different request/response format
+    const response = await axios.post(
+      settings.apiBaseUrl,
+      {
+        model: settings.model,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        max_tokens: MAX_OUTPUT_TOKENS,
+        temperature: 0.1,
+      },
+      {
+        timeout: REQUEST_TIMEOUT_MS,
+        headers: {
+          "x-api-key": settings.apiKey,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const data = response.data as {
+      content?: Array<{ type: string; text?: string }>;
+      usage?: { input_tokens?: number; output_tokens?: number };
+      error?: { message?: string };
+    };
+
+    if (data.error?.message) {
+      throw new Error(`Anthropic: ${data.error.message}`);
+    }
+
+    const text = data.content
+      ?.filter((b) => b.type === "text")
+      .map((b) => b.text ?? "")
+      .join("") ?? "";
+    const tokensUsed = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
+
+    return { content: text, tokensUsed };
+  }
+
+  // OpenAI-compatible format (OpenRouter, OpenAI, Google AI)
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${settings.apiKey}`,
+    "Content-Type": "application/json",
+  };
+
+  // OpenRouter-specific headers
+  if (settings.apiBaseUrl.includes("openrouter.ai")) {
+    headers["HTTP-Referer"] = process.env.FRONTEND_URL || "https://review-hog.vercel.app";
+    headers["X-OpenRouter-Title"] = "ReviewHog-v2";
   }
 
   const response = await axios.post<OpenRouterResponse>(
@@ -185,19 +241,11 @@ async function callOpenRouter(
       temperature: 0.1,
       max_tokens: MAX_OUTPUT_TOKENS,
     },
-    {
-      timeout: REQUEST_TIMEOUT_MS,
-      headers: {
-        Authorization: `Bearer ${settings.apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": process.env.FRONTEND_URL || "https://review-hog.vercel.app",
-        "X-OpenRouter-Title": "ReviewHog-v2",
-      },
-    }
+    { timeout: REQUEST_TIMEOUT_MS, headers }
   );
 
   if (response.data.error?.message) {
-    throw new Error(`OpenRouter: ${response.data.error.message}`);
+    throw new Error(`API Error: ${response.data.error.message}`);
   }
 
   const content = normalizeContent(response.data.choices?.[0]?.message?.content);
@@ -286,7 +334,7 @@ export async function runReviewer(
         prId: ctx.prId,
       });
 
-      const { content, tokensUsed } = await callOpenRouter(systemPrompt, userPrompt, settings);
+      const { content, tokensUsed } = await callLLMProvider(systemPrompt, userPrompt, settings);
       totalTokensUsed += tokensUsed;
 
       if (!content.trim()) {

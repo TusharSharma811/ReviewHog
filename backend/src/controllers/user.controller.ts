@@ -236,9 +236,18 @@ export const removeRepository = async (req: Request, res: Response) => {
 
 // AI Settings
 
+const PROVIDER_INFO: Record<string, { name: string; baseUrl: string; keyUrl: string }> = {
+  openrouter: { name: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1/chat/completions", keyUrl: "https://openrouter.ai/keys" },
+  openai: { name: "OpenAI", baseUrl: "https://api.openai.com/v1/chat/completions", keyUrl: "https://platform.openai.com/api-keys" },
+  anthropic: { name: "Anthropic", baseUrl: "https://api.anthropic.com/v1/messages", keyUrl: "https://console.anthropic.com/settings/keys" },
+  google: { name: "Google AI", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", keyUrl: "https://aistudio.google.com/apikey" },
+  default: { name: "Default (Free)", baseUrl: "https://openrouter.ai/api/v1/chat/completions", keyUrl: "" },
+};
+
 const updateAISettingsSchema = z.object({
   apiKey: z.string().max(4096, "API key is too long").optional(),
   model: z.string().max(200, "Model ID is too long").optional(),
+  provider: z.enum(["openrouter", "openai", "anthropic", "google", "default"]).optional(),
   useDefaultApiKey: z.boolean().optional().default(false),
   useDefaultModel: z.boolean().optional().default(false),
 });
@@ -249,9 +258,18 @@ const modelIdSchema = z.string()
   .max(200, "Model ID is too long")
   .regex(/^[a-zA-Z0-9._/:@+-]+$/, "Model ID contains invalid characters");
 
-function serializeAISettings(user: { aiApiKey: string | null; aiModel: string | null }) {
+function serializeAISettings(user: {
+  aiApiKey: string | null;
+  aiModel: string | null;
+  aiProvider: string;
+  aiBaseUrl: string | null;
+}) {
+  const provider = user.aiProvider || "default";
+  const info = PROVIDER_INFO[provider] || PROVIDER_INFO.default;
+
   return {
-    provider: "OpenRouter",
+    provider,
+    providerName: info.name,
     defaultModel: DEFAULT_OPENROUTER_MODEL,
     model: getEffectiveOpenRouterModel(user.aiModel),
     customModel: user.aiModel ?? "",
@@ -259,6 +277,7 @@ function serializeAISettings(user: { aiApiKey: string | null; aiModel: string | 
     usesDefaultApiKey: !user.aiApiKey,
     usesDefaultModel: !user.aiModel,
     hasDefaultApiKey: Boolean(getDefaultOpenRouterApiKey()),
+    baseUrl: user.aiBaseUrl || info.baseUrl,
   };
 }
 
@@ -272,7 +291,7 @@ export const getAISettings = async (req: Request, res: Response) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { aiApiKey: true, aiModel: true },
+      select: { aiApiKey: true, aiModel: true, aiProvider: true, aiBaseUrl: true },
     });
 
     if (!user) {
@@ -298,20 +317,28 @@ export const updateAISettings = async (req: Request, res: Response) => {
     return res.status(400).json({ message: parsed.error.issues[0].message });
   }
 
-  const { apiKey, model, useDefaultApiKey, useDefaultModel } = parsed.data;
+  const { apiKey, model, useDefaultApiKey, useDefaultModel, provider } = parsed.data;
 
   try {
     const current = await prisma.user.findUnique({
       where: { id: userId },
-      select: { aiApiKey: true, aiModel: true },
+      select: { aiApiKey: true, aiModel: true, aiProvider: true },
     });
 
     if (!current) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const data: { aiApiKey?: string | null; aiModel?: string | null } = {};
+    const data: Record<string, unknown> = {};
 
+    // Provider change
+    if (provider) {
+      data.aiProvider = provider;
+      const info = PROVIDER_INFO[provider];
+      if (info) data.aiBaseUrl = info.baseUrl;
+    }
+
+    // API key
     if (useDefaultApiKey) {
       data.aiApiKey = null;
     } else if (typeof apiKey === "string" && apiKey.trim()) {
@@ -320,6 +347,7 @@ export const updateAISettings = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "API key is required when default key is disabled" });
     }
 
+    // Model
     if (useDefaultModel) {
       data.aiModel = null;
     } else if (typeof model === "string") {
@@ -333,7 +361,7 @@ export const updateAISettings = async (req: Request, res: Response) => {
     const updated = await prisma.user.update({
       where: { id: userId },
       data,
-      select: { aiApiKey: true, aiModel: true },
+      select: { aiApiKey: true, aiModel: true, aiProvider: true, aiBaseUrl: true },
     });
 
     res.status(200).json(serializeAISettings(updated));
