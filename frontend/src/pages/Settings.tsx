@@ -4,6 +4,8 @@ import Loader from "@/components/Loader";
 import { useNavigate } from "react-router-dom";
 import { AiSettingsPanel } from "@/components/AiSettingsPanel";
 import { ReviewSettingsPanel } from "@/components/ReviewSettingsPanel";
+import { CustomRulesPanel } from "@/components/CustomRulesPanel";
+import { BadgeSettings } from "@/components/BadgeSettings";
 import { API_BASE_URL } from "@/config";
 import { authFetch, getToken, removeToken } from "@/lib/auth";
 import { toast } from "sonner";
@@ -121,6 +123,8 @@ const Settings = () => {
           <div className="xl:col-span-2 space-y-8">
             <AiSettingsPanel />
             <ReviewSettingsPanel />
+            <CustomRulesPanel />
+            <BadgeSettings />
           </div>
 
           <div className="space-y-8">

@@ -1,4 +1,4 @@
-import { ExternalLink, LogOut, RefreshCw, Settings as SettingsIcon, Sun, Moon } from "lucide-react";
+import { ExternalLink, LogOut, RefreshCw, Settings as SettingsIcon, Sun, Moon, History, GitCompareArrows } from "lucide-react";
 import { MetricsSection } from "@/components/MetricsSection";
 import { GitHubActivitySection } from "@/components/GitHubActivity";
 import { RecentActivity } from "@/components/RecentActivity";
@@ -366,6 +366,22 @@ const Dashboard = () => {
                 title={isDark ? "Switch to light mode" : "Switch to dark mode"}
               >
                 {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
+              <button
+                onClick={() => navigate("/history")}
+                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-card hover:bg-muted h-9 w-9 sm:w-auto sm:px-4 justify-center transition-colors cursor-pointer"
+                title="Review History"
+              >
+                <History className="h-4 w-4" />
+                <span className="hidden sm:inline">History</span>
+              </button>
+              <button
+                onClick={() => navigate("/compare")}
+                className="inline-flex items-center gap-2 rounded-full text-sm font-medium border border-border bg-card hover:bg-muted h-9 w-9 sm:w-auto sm:px-4 justify-center transition-colors cursor-pointer"
+                title="Compare Reviews"
+              >
+                <GitCompareArrows className="h-4 w-4" />
+                <span className="hidden sm:inline">Compare</span>
               </button>
               <button
                 onClick={() => navigate("/settings")}

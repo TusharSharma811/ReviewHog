@@ -595,3 +595,49 @@ html {
   letter-spacing: -0.1px;
 }
 
+/* ═══════════════════════════════════════════════
+   REVIEW DETAIL — Page Styles
+   ═══════════════════════════════════════════════ */
+
+/* Subtle animated glow on review score cards */
+.review-card-glow {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.review-card-glow::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.06) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.review-card-glow:hover::before {
+  opacity: 1;
+}
+
+.review-card-glow:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.04),
+    0 8px 32px rgba(99, 102, 241, 0.06);
+}
+
+.dark .review-card-glow:hover {
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    0 8px 32px rgba(99, 102, 241, 0.12);
+}
+
+/* Review summary rendered content */
+.review-summary-content pre {
+  border: 1px solid var(--border);
+}
+

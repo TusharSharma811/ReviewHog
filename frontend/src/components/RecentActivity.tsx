@@ -1,4 +1,5 @@
 import { Star, ChevronDown, ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface Review {
   id: string;
@@ -48,10 +49,16 @@ function renderStars(rating: number | null | undefined) {
 }
 
 export const RecentActivity = ({ recentActivities, hasMore = false, onLoadMore }: RecentActivityProps) => {
+  const navigate = useNavigate();
+
   return (
     <div className="rounded-2xl border border-border bg-card">
-      <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-border">
+      <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-border flex items-center justify-between">
         <h3 className="text-lg font-semibold text-foreground">Recent Activity</h3>
+        <button onClick={() => navigate("/history")}
+          className="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors cursor-pointer">
+          View All →
+        </button>
       </div>
       <div className="p-4 sm:p-6 space-y-3">
         {recentActivities.length === 0 ? (
@@ -67,26 +74,21 @@ export const RecentActivity = ({ recentActivities, hasMore = false, onLoadMore }
                   : review.repo.name
                 : "Unknown repo";
 
-              const Wrapper = review.prUrl ? "a" : "div";
-              const wrapperProps = review.prUrl
-                ? {
-                    href: review.prUrl,
-                    target: "_blank" as const,
-                    rel: "noopener noreferrer",
-                  }
-                : {};
-
               return (
-                <Wrapper
+                <div
                   key={review.id}
-                  {...wrapperProps}
+                  onClick={() => navigate(`/review/${review.id}`)}
                   className="block p-4 rounded-xl bg-muted/50 hover:bg-muted transition-all duration-200 cursor-pointer group hover:shadow-sm"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-base font-semibold text-foreground group-hover:text-indigo-600 transition-colors">{repoName}</span>
                       {review.prUrl && (
-                        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <a href={review.prUrl} target="_blank" rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-background/80">
+                          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground hover:text-indigo-600" />
+                        </a>
                       )}
                     </div>
                     <span className="text-xs text-muted-foreground shrink-0 ml-2">
@@ -99,7 +101,7 @@ export const RecentActivity = ({ recentActivities, hasMore = false, onLoadMore }
                     </p>
                   )}
                   {renderStars(review.rating)}
-                </Wrapper>
+                </div>
               );
             })}
             {hasMore && onLoadMore && (
