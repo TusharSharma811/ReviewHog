@@ -1,6 +1,9 @@
 import ToggleSwitch from "./ToggleSwitch";
-import { GitFork, Star, ChevronDown, Trash2, Plus } from "lucide-react";
+import { GitFork, Star, ChevronDown, Trash2, Plus, MessageSquare, Check, X, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { API_BASE_URL } from "@/config";
+import { authFetch } from "@/lib/auth";
+import { toast } from "sonner";
 
 interface Repository {
   id: string;
@@ -11,6 +14,7 @@ interface Repository {
   forks?: number;
   language?: string | null;
   reviews?: { createdAt: string }[];
+  reviewInstructions?: string | null;
 }
 
 interface RepositoryCardProps {
@@ -34,6 +38,100 @@ function timeAgo(dateStr: string): string {
   if (diffDays < 30) return `${diffDays}d ago`;
   return date.toLocaleDateString();
 }
+
+// ─── Per-Repo Review Instructions (inline toggle) ───────────────────────────
+
+function ReviewInstructionsEditor({ repoId, initial }: { repoId: string; initial: string | null }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(initial ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(initial ?? "");
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await authFetch(
+        `${API_BASE_URL}/api/users/data/repos/${repoId}/review-instructions`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reviewInstructions: value.trim() || null }),
+        }
+      );
+      if (res.ok) {
+        toast.success("Review instructions saved");
+        setSaved(value.trim());
+        setOpen(false);
+      } else {
+        const data = await res.json();
+        toast.error(data.message || "Failed to save");
+      }
+    } catch {
+      toast.error("Failed to save instructions");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setValue(saved);
+    setOpen(false);
+  };
+
+  return (
+    <div className="mt-2">
+      {!open ? (
+        <button
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors cursor-pointer rounded-md hover:bg-indigo-50 dark:hover:bg-indigo-950/30 px-2 py-1"
+        >
+          <MessageSquare className="h-3 w-3" />
+          {saved ? "Edit review prompt" : "Add review prompt"}
+        </button>
+      ) : (
+        <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+          <textarea
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="e.g. Focus on error handling, ensure all async functions have try-catch blocks, check for proper input validation..."
+            rows={3}
+            maxLength={5000}
+            className="w-full px-3 py-2 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-background text-foreground text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none placeholder:text-muted-foreground/60"
+          />
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              {value.length}/5000
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleCancel}
+                disabled={saving}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <X className="h-3 w-3" />
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="inline-flex items-center gap-1 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1 rounded-md transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Check className="h-3 w-3" />
+                )}
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Repository Card ────────────────────────────────────────────────────────
 
 export const RepositoryCard = ({
   repositories,
@@ -84,69 +182,76 @@ export const RepositoryCard = ({
               return (
                 <div
                   key={repo.id}
-                  className="flex items-start justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
+                  className="p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
                 >
-                  <div className="space-y-1.5 flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{repoName}</p>
-                    {repo.description && (
-                      <p className="text-xs text-muted-foreground truncate">{repo.description}</p>
-                    )}
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      {repo.language && (
-                        <span className="inline-flex items-center gap-1">
-                          <span className="h-2 w-2 rounded-full bg-indigo-400" />
-                          {repo.language}
-                        </span>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{repoName}</p>
+                      {repo.description && (
+                        <p className="text-xs text-muted-foreground truncate">{repo.description}</p>
                       )}
-                      {(repo.stars ?? 0) > 0 && (
-                        <span className="flex items-center gap-1">
-                          <Star className="h-3 w-3" />
-                          {repo.stars}
-                        </span>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        {repo.language && (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="h-2 w-2 rounded-full bg-indigo-400" />
+                            {repo.language}
+                          </span>
+                        )}
+                        {(repo.stars ?? 0) > 0 && (
+                          <span className="flex items-center gap-1">
+                            <Star className="h-3 w-3" />
+                            {repo.stars}
+                          </span>
+                        )}
+                        {(repo.forks ?? 0) > 0 && (
+                          <span className="flex items-center gap-1">
+                            <GitFork className="h-3 w-3" />
+                            {repo.forks}
+                          </span>
+                        )}
+                        {lastReview && <span>Last review: {timeAgo(lastReview)}</span>}
+                      </div>
+                    </div>
+                    <div className="ml-3 shrink-0 flex items-center gap-2">
+                      <ToggleSwitch repoId={repo.id} initialChecked={repo.isReviewOn} />
+                      {onRemoveRepo && (
+                        <>
+                          {isConfirming ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => {
+                                  onRemoveRepo(repo.id, repo.name);
+                                  setConfirmingDelete(null);
+                                }}
+                                className="text-xs font-medium text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg px-2 py-1 transition-colors cursor-pointer"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => setConfirmingDelete(null)}
+                                className="text-xs font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/80 rounded-lg px-2 py-1 transition-colors cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmingDelete(repo.id)}
+                              className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors cursor-pointer"
+                              title="Remove repository"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </>
                       )}
-                      {(repo.forks ?? 0) > 0 && (
-                        <span className="flex items-center gap-1">
-                          <GitFork className="h-3 w-3" />
-                          {repo.forks}
-                        </span>
-                      )}
-                      {lastReview && <span>Last review: {timeAgo(lastReview)}</span>}
                     </div>
                   </div>
-                  <div className="ml-3 shrink-0 flex items-center gap-2">
-                    <ToggleSwitch repoId={repo.id} initialChecked={repo.isReviewOn} />
-                    {onRemoveRepo && (
-                      <>
-                        {isConfirming ? (
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => {
-                                onRemoveRepo(repo.id, repo.name);
-                                setConfirmingDelete(null);
-                              }}
-                              className="text-xs font-medium text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg px-2 py-1 transition-colors cursor-pointer"
-                            >
-                              Confirm
-                            </button>
-                            <button
-                              onClick={() => setConfirmingDelete(null)}
-                              className="text-xs font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/80 rounded-lg px-2 py-1 transition-colors cursor-pointer"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setConfirmingDelete(repo.id)}
-                            className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors cursor-pointer"
-                            title="Remove repository"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
+                  {/* Per-repo review instructions — reveals on button click */}
+                  <ReviewInstructionsEditor
+                    repoId={repo.id}
+                    initial={repo.reviewInstructions ?? null}
+                  />
                 </div>
               );
             })}

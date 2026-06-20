@@ -19,12 +19,13 @@ interface Finding {
   reviewerType: string;
   file: string;
   lineRange?: string;
-  severity: "critical" | "high" | "medium" | "low";
+  severity: "critical" | "high" | "medium" | "low" | "info";
   confidence: number;
   title: string;
   description: string;
   suggestion?: string;
   category: string;
+  source?: string[];
 }
 
 interface ReviewData {
@@ -43,6 +44,8 @@ interface ReviewData {
   prUrl: string | null;
   approved: boolean;
   createdAt: string;
+  stagesRun?: string[];
+  standardsTriggered?: string[];
   repo: {
     id: string;
     name: string;
@@ -58,6 +61,7 @@ const SEVERITY_CONFIG = {
   high:     { color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/40", border: "border-orange-200 dark:border-orange-800", icon: "🟠", label: "High" },
   medium:   { color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/40", border: "border-amber-200 dark:border-amber-800", icon: "🟡", label: "Medium" },
   low:      { color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/40", border: "border-blue-200 dark:border-blue-800", icon: "🔵", label: "Low" },
+  info:     { color: "text-cyan-600", bg: "bg-cyan-50 dark:bg-cyan-950/40", border: "border-cyan-200 dark:border-cyan-800", icon: "ℹ️", label: "Info" },
 };
 
 function timeAgo(dateStr: string): string {
@@ -134,10 +138,15 @@ function FindingCard({ finding, onCreateIssue }: { finding: Finding; onCreateIss
             </div>
           )}
 
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex items-center gap-2 pt-1 flex-wrap">
             <span className="text-xs text-muted-foreground px-2 py-1 rounded-full bg-background/60 border border-border">
               <Shield className="h-3 w-3 inline mr-1" />{finding.reviewerType}
             </span>
+            {finding.source && finding.source.length > 0 && finding.source.map((src, i) => (
+              <span key={i} className="text-xs text-violet-600 dark:text-violet-400 px-2 py-1 rounded-full bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800">
+                📋 {src}
+              </span>
+            ))}
             <button
               onClick={(e) => { e.stopPropagation(); onCreateIssue(finding); }}
               className="text-xs text-indigo-600 hover:text-indigo-700 px-2 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-950/50 transition-colors cursor-pointer flex items-center gap-1"
@@ -263,9 +272,10 @@ const ReviewDetail = () => {
   const findings: Finding[] = Array.isArray(review.findingsJson) ? review.findingsJson : [];
   const repoName = review.repo.name.includes("/") ? review.repo.name.split("/")[1] : review.repo.name;
   const isV2 = review.pipelineVersion === "v2";
+  const isV3 = review.pipelineVersion === "v3";
 
   // Group findings by severity
-  const grouped = { critical: [] as Finding[], high: [] as Finding[], medium: [] as Finding[], low: [] as Finding[] };
+  const grouped = { critical: [] as Finding[], high: [] as Finding[], medium: [] as Finding[], low: [] as Finding[], info: [] as Finding[] };
   for (const f of findings) {
     if (grouped[f.severity]) grouped[f.severity].push(f);
   }
@@ -355,21 +365,22 @@ const ReviewDetail = () => {
           </div>
         </div>
 
-        {/* Findings Section (V2 only) */}
-        {isV2 && findings.length > 0 && (
+        {/* Findings Section */}
+        {(isV2 || isV3) && findings.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg sm:text-xl font-bold text-foreground">Issues Found ({findings.length})</h2>
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-2 text-xs flex-wrap">
                 {grouped.critical.length > 0 && <span className="px-2 py-1 rounded-full bg-red-50 dark:bg-red-950/40 text-red-600 font-medium border border-red-200 dark:border-red-800">🔴 {grouped.critical.length}</span>}
                 {grouped.high.length > 0 && <span className="px-2 py-1 rounded-full bg-orange-50 dark:bg-orange-950/40 text-orange-600 font-medium border border-orange-200 dark:border-orange-800">🟠 {grouped.high.length}</span>}
                 {grouped.medium.length > 0 && <span className="px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 font-medium border border-amber-200 dark:border-amber-800">🟡 {grouped.medium.length}</span>}
                 {grouped.low.length > 0 && <span className="px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 font-medium border border-blue-200 dark:border-blue-800">🔵 {grouped.low.length}</span>}
+                {grouped.info.length > 0 && <span className="px-2 py-1 rounded-full bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 font-medium border border-cyan-200 dark:border-cyan-800">ℹ️ {grouped.info.length}</span>}
               </div>
             </div>
 
             <div className="space-y-2">
-              {(["critical", "high", "medium", "low"] as const).map(severity =>
+              {(["critical", "high", "medium", "low", "info"] as const).map(severity =>
                 grouped[severity].map(f => (
                   <FindingCard key={f.id} finding={f} onCreateIssue={handleCreateIssue} />
                 ))
@@ -423,7 +434,7 @@ const ReviewDetail = () => {
         )}
 
         {/* Pipeline Stats Footer */}
-        {isV2 && (
+        {(isV2 || isV3) && (
           <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
             <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Pipeline Details</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -444,8 +455,10 @@ const ReviewDetail = () => {
               <div className="flex items-center gap-2">
                 <Shield className="h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-xs text-muted-foreground">Reviewers</p>
-                  <p className="text-sm font-medium text-foreground">{review.reviewersUsed.join(", ") || "—"}</p>
+                  <p className="text-xs text-muted-foreground">{isV3 ? "Stages" : "Reviewers"}</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {isV3 && review.stagesRun ? review.stagesRun.join(" → ") : review.reviewersUsed.join(", ") || "—"}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -456,6 +469,19 @@ const ReviewDetail = () => {
                 </div>
               </div>
             </div>
+            {/* V3: Standards Triggered */}
+            {isV3 && review.standardsTriggered && review.standardsTriggered.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-border">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Standards Triggered</p>
+                <div className="flex flex-wrap gap-2">
+                  {review.standardsTriggered.map((std, i) => (
+                    <span key={i} className="text-xs px-2.5 py-1 rounded-full bg-violet-50 dark:bg-violet-950/30 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800 font-medium">
+                      ✓ {std}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

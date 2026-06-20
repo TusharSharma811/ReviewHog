@@ -4,6 +4,7 @@ import Loader from "@/components/Loader";
 import { useNavigate } from "react-router-dom";
 import { AiSettingsPanel } from "@/components/AiSettingsPanel";
 import { ReviewSettingsPanel } from "@/components/ReviewSettingsPanel";
+import { RepoStandardsPanel } from "@/components/RepoStandardsPanel";
 import { CustomRulesPanel } from "@/components/CustomRulesPanel";
 import { BadgeSettings } from "@/components/BadgeSettings";
 import { API_BASE_URL } from "@/config";
@@ -123,6 +124,7 @@ const Settings = () => {
           <div className="xl:col-span-2 space-y-8">
             <AiSettingsPanel />
             <ReviewSettingsPanel />
+            <RepoStandardsPanel />
             <CustomRulesPanel />
             <BadgeSettings />
           </div>
