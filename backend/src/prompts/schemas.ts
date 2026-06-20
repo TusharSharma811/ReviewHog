@@ -13,7 +13,7 @@ import { z } from "zod";
 export const findingSchema = z.object({
   file: z.string(),
   lineRange: z.string().optional(), // e.g. "45-52"
-  severity: z.enum(["critical", "high", "medium", "low"]),
+  severity: z.enum(["critical", "high", "medium", "low", "info"]),
   confidence: z.number().min(0).max(1),
   title: z.string().max(150),
   description: z.string().max(800),
@@ -29,7 +29,12 @@ export const findingSchema = z.object({
     "performance",
     "null-safety",
     "resource-leak",
+    "maintainability",
+    "code-quality",
+    "accessibility",
+    "standards-violation",
   ]),
+  source: z.array(z.string()).optional(),
 });
 
 export const reviewerOutputSchema = z.object({
@@ -57,7 +62,7 @@ export const FINDING_JSON_SCHEMA = {
           },
           severity: {
             type: "string" as const,
-            enum: ["critical", "high", "medium", "low"],
+            enum: ["critical", "high", "medium", "low", "info"],
             description: "Impact severity of this finding",
           },
           confidence: {
@@ -92,7 +97,16 @@ export const FINDING_JSON_SCHEMA = {
               "performance",
               "null-safety",
               "resource-leak",
+              "maintainability",
+              "code-quality",
+              "accessibility",
+              "standards-violation",
             ],
+          },
+          source: {
+            type: "array" as const,
+            items: { type: "string" as const },
+            description: "Which review stage(s) generated this finding",
           },
         },
         required: [

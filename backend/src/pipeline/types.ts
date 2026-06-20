@@ -71,7 +71,10 @@ export type ReviewerType =
   | "correctness"
   | "security"
   | "concurrency"
-  | "api-contract";
+  | "api-contract"
+  | "general"
+  | "standard"
+  | "user-prompt";
 
 export type FindingCategory =
   | "bug"
@@ -83,9 +86,13 @@ export type FindingCategory =
   | "breaking-change"
   | "performance"
   | "null-safety"
-  | "resource-leak";
+  | "resource-leak"
+  | "maintainability"
+  | "code-quality"
+  | "accessibility"
+  | "standards-violation";
 
-export type Severity = "critical" | "high" | "medium" | "low";
+export type Severity = "critical" | "high" | "medium" | "low" | "info";
 
 export interface Finding {
   id: string;
@@ -98,6 +105,7 @@ export interface Finding {
   description: string;
   suggestion?: string;
   category: FindingCategory;
+  source: string[]; // Tracks which stage(s) produced this finding
 }
 
 // ─── Pipeline Result ────────────────────────────────────────────────────────
@@ -108,9 +116,11 @@ export interface PipelineStats {
   filesReviewed: number;
   filesSkipped: number;
   chunksProcessed: number;
-  reviewersRun: ReviewerType[];
+  reviewersRun: string[];
   totalTokensUsed: number;
   processingTimeMs: number;
+  stagesRun: string[];
+  standardsTriggered: string[];
 }
 
 export interface PipelineResult {

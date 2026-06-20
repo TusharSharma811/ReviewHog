@@ -28,6 +28,10 @@ const REVIEWER_PROMPTS: Record<ReviewerType, string> = {
   // Future reviewers:
   concurrency: "",
   "api-contract": "",
+  // V3 pipeline stage reviewers (prompts handled by their own stages):
+  general: "",
+  standard: "",
+  "user-prompt": "",
 };
 
 // P0: Concurrency limit for parallel chunk processing

@@ -25,10 +25,11 @@ model User {
   aiReviewsEnabled Boolean @default(true)
   defaultRepoReviewOn Boolean @default(true)
   onboardingComplete Boolean @default(false)
-  repos       Repo[]
-  reviews     Review[]
-  insights    Insight?
-  customRules CustomRule[]
+  repos          Repo[]
+  reviews        Review[]
+  insights       Insight?
+  customRules    CustomRule[]
+  repoStandards  RepoStandard[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 }
@@ -44,9 +45,10 @@ model Repo {
   owner       User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId     String
   reviews     Review[]
-  isReviewOn Boolean    @default(false)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  isReviewOn          Boolean    @default(false)
+  reviewInstructions  String?    // Per-repo custom review prompt
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 }
 
 model Insight {
@@ -82,9 +84,11 @@ model Review {
   highCount       Int       @default(0)
   tokensUsed      Int       @default(0)
   processingMs    Int       @default(0)
-  reviewersUsed   String[]
-  pipelineVersion String    @default("v1")
-  findingsJson    Json?
+  reviewersUsed      String[]
+  pipelineVersion    String    @default("v3")
+  findingsJson       Json?
+  stagesRun          String[]  // Which pipeline stages ran
+  standardsTriggered String[]  // Which repo standards were used
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -99,6 +103,17 @@ model CustomRule {
   description String?
   severity    String    @default("medium") // critical, high, medium, low
   category    String    @default("custom") // custom, security, performance, style
+  isEnabled   Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model RepoStandard {
+  id          String    @id @default(cuid())
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId     String
+  name        String    // e.g., "React Standards", "Security Standards"
+  prompt      String    // The full LLM review prompt/instructions
   isEnabled   Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

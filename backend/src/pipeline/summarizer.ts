@@ -13,6 +13,7 @@ const SEVERITY_EMOJI: Record<Severity, string> = {
   high: "🟠",
   medium: "🟡",
   low: "🔵",
+  info: "ℹ️",
 };
 
 const SEVERITY_LABEL: Record<Severity, string> = {
@@ -20,6 +21,7 @@ const SEVERITY_LABEL: Record<Severity, string> = {
   high: "High",
   medium: "Medium",
   low: "Low",
+  info: "Info",
 };
 
 const CONCLUSION_EMOJI: Record<Conclusion, string> = {

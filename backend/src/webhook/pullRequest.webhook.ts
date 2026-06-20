@@ -2,16 +2,10 @@ import { Request, Response } from "express";
 import axios from "axios";
 import prisma from "../db/prismaClient.js";
 import { getGithubToken } from "../utils/getGithubToken.js";
-import {
-  safeRunPullRequestReview,
-  type PullRequestReviewFile,
-} from "../utils/aiUtil.js";
 import { runReviewPipeline } from "../pipeline/index.js";
 import type { PRContext, PRFile } from "../pipeline/types.js";
 import { logger } from "../utils/logger.js";
 import { z } from "zod";
-
-const USE_V2_PIPELINE = process.env.REVIEW_PIPELINE_VERSION === "v2";
 
 // Files that should never be reviewed because they produce noisy feedback.
 const SKIP_EXTENSIONS = new Set([
@@ -66,12 +60,6 @@ function truncateGithubComment(body: string): string {
   return body.slice(0, GITHUB_COMMENT_LIMIT - suffix.length) + suffix;
 }
 
-interface AIResponse {
-  comment: string;
-  conclusion: "success" | "failure" | "neutral";
-  rating: number;
-}
-
 interface PullRequestFile {
   filename: string;
   status: string;
@@ -79,27 +67,7 @@ interface PullRequestFile {
   contents_url: string;
 }
 
-function buildPullRequestComment(
-  aiResponse: AIResponse,
-  reviewedFiles: PullRequestReviewFile[],
-  skippedFiles: PullRequestFile[]
-): string {
-  const skippedSummary = skippedFiles.length > 0
-    ? `\n\nSkipped ${skippedFiles.length} file(s): ${skippedFiles.map((file) => `\`${file.filename}\``).join(", ")}`
-    : "";
-
-  return truncateGithubComment(`## ReviewHog AI Review
-
-${aiResponse.comment}
-
----
-Rating: ${aiResponse.rating}/5
-Conclusion: ${aiResponse.conclusion}
-Reviewed ${reviewedFiles.length} file(s): ${reviewedFiles.map((file) => `\`${file.filename}\``).join(", ")}${skippedSummary}`);
-}
-
 // Zod validation for the webhook payload
-// C2: Added title, body, base to extract PR context for AI reviewers
 const pullRequestPayloadSchema = z.object({
   action: z.string(),
   pull_request: z.object({
@@ -144,7 +112,7 @@ async function buildReviewFileContext(
   file: PullRequestFile,
   headers: Record<string, string>,
   prId: string
-): Promise<PullRequestReviewFile> {
+): Promise<PRFile> {
   logger.info("WEBHOOK", "Fetching review context", {
     prId,
     file: file.filename,
@@ -176,17 +144,19 @@ async function buildReviewFileContext(
     status: file.status,
     patch: file.patch!,
     fullContent: String(fileContent),
+    contents_url: file.contents_url,
   };
 }
 
 /**
  * Process the PR review in the background (after webhook has responded 200).
+ * V3 pipeline only — no V1/V2 fallback.
  */
 async function processPullRequest(payload: PullRequestPayload, ownerId: string): Promise<void> {
   const prId = payload.pull_request.id;
   const repoFullName = `${payload.repository.owner.login}/${payload.repository.name}`;
 
-  logger.info("WEBHOOK", "Processing PR review", { prId, repo: repoFullName });
+  logger.info("WEBHOOK", "Processing PR review (v3 pipeline)", { prId, repo: repoFullName });
 
   try {
     const token = await getGithubToken(payload.installation.id);
@@ -255,101 +225,61 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
       reviewableFiles.map((file) => buildReviewFileContext(file, headers, prId))
     );
 
-    let aiResponse: AIResponse;
-    let v2PipelineResult: import("../pipeline/types.js").PipelineResult | null = null;
+    // ── V3 Pipeline ──
+    const prContext: PRContext = {
+      prId,
+      repoFullName,
+      prTitle: payload.pull_request.title || "",
+      prBody: payload.pull_request.body || "",
+      baseBranch: payload.pull_request.base?.ref || "",
+      headSha: payload.pull_request.head.sha,
+      ownerId,
+      installationId: payload.installation.id,
+      commentsUrl: payload.pull_request.comments_url,
+      prUrl: payload.pull_request.url,
+    };
 
-    // ── V2 Pipeline ─────────────────────────────────────────────────
-    if (USE_V2_PIPELINE) {
-      try {
-        // C2: Extract PR context from webhook payload
-        const prContext: PRContext = {
-          prId,
-          repoFullName,
-          prTitle: payload.pull_request.title || "",
-          prBody: payload.pull_request.body || "",
-          baseBranch: payload.pull_request.base?.ref || "",
-          headSha: payload.pull_request.head.sha,
-          ownerId,
-          installationId: payload.installation.id,
-          commentsUrl: payload.pull_request.comments_url,
-          prUrl: payload.pull_request.url,
-        };
+    let pipelineResult: import("../pipeline/types.js").PipelineResult;
+    try {
+      pipelineResult = await runReviewPipeline(prContext, reviewFiles);
 
-        const prFiles: PRFile[] = reviewFiles.map((f) => ({
-          filename: f.filename,
-          status: f.status,
-          patch: f.patch,
-          fullContent: f.fullContent,
-          contents_url: "",
-        }));
+      logger.info("WEBHOOK", "V3 pipeline review complete", {
+        prId,
+        rating: pipelineResult.rating,
+        conclusion: pipelineResult.conclusion,
+        riskScore: pipelineResult.riskScore,
+        findingsCount: pipelineResult.findings.length,
+        stagesRun: pipelineResult.stats.stagesRun,
+        standardsTriggered: pipelineResult.stats.standardsTriggered,
+        processingTimeMs: pipelineResult.stats.processingTimeMs,
+      });
+    } catch (pipelineErr) {
+      logger.error("WEBHOOK", "V3 pipeline failed", {
+        prId,
+        error: pipelineErr instanceof Error ? pipelineErr.message : String(pipelineErr),
+        stack: pipelineErr instanceof Error ? pipelineErr.stack : undefined,
+      });
 
-        const pipelineResult = await runReviewPipeline(prContext, prFiles);
-        v2PipelineResult = pipelineResult;
-
-        aiResponse = {
-          comment: pipelineResult.summary,
-          conclusion: pipelineResult.conclusion,
-          rating: pipelineResult.rating,
-        };
-
-        logger.info("WEBHOOK", "V2 pipeline review complete", {
-          prId,
-          rating: pipelineResult.rating,
-          conclusion: pipelineResult.conclusion,
-          riskScore: pipelineResult.riskScore,
-          findingsCount: pipelineResult.findings.length,
-          processingTimeMs: pipelineResult.stats.processingTimeMs,
-        });
-      } catch (v2Err) {
-        logger.error("WEBHOOK", "V2 pipeline failed, falling back to v1", {
-          prId,
-          error: v2Err instanceof Error ? v2Err.message : String(v2Err),
-          stack: v2Err instanceof Error ? v2Err.stack : undefined,
-        });
-
-        // Fall back to v1
-        try {
-          aiResponse = await safeRunPullRequestReview(reviewFiles, { ownerId });
-        } catch (v1Err) {
-          logger.error("WEBHOOK", "V1 fallback also failed", {
-            prId,
-            error: v1Err instanceof Error ? v1Err.message : String(v1Err),
-          });
-          aiResponse = {
-            comment: `ReviewHog could not generate a complete AI summary for this pull request.\n\nPlease review the changes manually before merging.`,
-            conclusion: "neutral",
-            rating: 3,
-          };
-        }
-      }
-    } else {
-      // ── V1 Pipeline (original) ──────────────────────────────────────
-      try {
-        aiResponse = await safeRunPullRequestReview(reviewFiles, { ownerId });
-        logger.info("WEBHOOK", "V1 AI PR review received", {
-          prId,
-          rating: aiResponse.rating,
-          conclusion: aiResponse.conclusion,
+      pipelineResult = {
+        findings: [],
+        riskScore: -1,
+        conclusion: "neutral",
+        rating: 3,
+        summary: `ReviewHog could not generate a complete AI review for this pull request.\n\nPlease review the changes manually before merging.`,
+        stats: {
           filesReviewed: reviewFiles.length,
-        });
-      } catch (err) {
-        logger.error("WEBHOOK", "AI PR review threw unexpected error", {
-          prId,
-          error: err instanceof Error ? err.message : String(err),
-          stack: err instanceof Error ? err.stack : undefined,
-        });
-        aiResponse = {
-          comment: `ReviewHog could not generate a complete AI summary for this pull request.\n\nPlease review the changes manually before merging.`,
-          conclusion: "neutral",
-          rating: 3,
-        };
-      }
+          filesSkipped: skippedFiles.length,
+          chunksProcessed: 0,
+          reviewersRun: [],
+          totalTokensUsed: 0,
+          processingTimeMs: 0,
+          stagesRun: [],
+          standardsTriggered: [],
+        },
+      };
     }
 
-    // V2 pipeline produces a self-contained summary; v1 needs wrapping
-    const commentBody = USE_V2_PIPELINE
-      ? aiResponse.comment
-      : buildPullRequestComment(aiResponse, reviewFiles, skippedFiles);
+    const commentBody = truncateGithubComment(pipelineResult.summary);
 
     await axios.post(
       payload.pull_request.comments_url,
@@ -357,45 +287,43 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
       { headers }
     );
 
-    logger.debug("WEBHOOK", "PR review comment posted", { prId, pipeline: USE_V2_PIPELINE ? "v2" : "v1" });
+    logger.debug("WEBHOOK", "PR review comment posted", { prId });
 
-    // P5: Persist V2 pipeline stats alongside the review
+    // Persist review with V3 pipeline metadata
     await prisma.review.create({
       data: {
         reviewId: makePullRequestReviewId(payload.pull_request.id.toString()),
         repoId: payload.repository.id.toString(),
         ownerId,
         comment: commentBody,
-        rating: aiResponse.rating,
+        rating: pipelineResult.rating,
         prUrl: payload.pull_request.html_url ?? null,
-        pipelineVersion: USE_V2_PIPELINE ? "v2" : "v1",
-        ...(v2PipelineResult ? {
-          riskScore: v2PipelineResult.riskScore,
-          findingsCount: v2PipelineResult.findings.length,
-          criticalCount: v2PipelineResult.findings.filter(f => f.severity === "critical").length,
-          highCount: v2PipelineResult.findings.filter(f => f.severity === "high").length,
-          tokensUsed: v2PipelineResult.stats.totalTokensUsed,
-          processingMs: v2PipelineResult.stats.processingTimeMs,
-          reviewersUsed: v2PipelineResult.stats.reviewersRun,
-          findingsJson: JSON.parse(JSON.stringify(v2PipelineResult.findings)),
-        } : {}),
+        pipelineVersion: "v3",
+        riskScore: pipelineResult.riskScore,
+        findingsCount: pipelineResult.findings.length,
+        criticalCount: pipelineResult.findings.filter(f => f.severity === "critical").length,
+        highCount: pipelineResult.findings.filter(f => f.severity === "high").length,
+        tokensUsed: pipelineResult.stats.totalTokensUsed,
+        processingMs: pipelineResult.stats.processingTimeMs,
+        reviewersUsed: pipelineResult.stats.reviewersRun,
+        findingsJson: JSON.parse(JSON.stringify(pipelineResult.findings)),
+        stagesRun: pipelineResult.stats.stagesRun,
+        standardsTriggered: pipelineResult.stats.standardsTriggered,
       },
     });
 
     logger.debug("WEBHOOK", "PR review saved to DB", { prId });
 
-    const issuesInPR = aiResponse.conclusion === "failure" ? 1 : 0;
-    const passesInPR = aiResponse.conclusion === "success" ? 1 : 0;
+    const issuesInPR = pipelineResult.conclusion === "failure" ? 1 : 0;
+    const passesInPR = pipelineResult.conclusion === "success" ? 1 : 0;
 
-    // Determine a descriptive check run title based on review results
-    // so the GitHub Checks tab shows at-a-glance severity information.
-    // "failure" conclusion makes the check show a red ❌ in the PR.
+    // Descriptive check run title based on review results
     let checkRunTitle = "AI code review complete";
-    if (USE_V2_PIPELINE && aiResponse.conclusion === "failure") {
+    if (pipelineResult.conclusion === "failure") {
       checkRunTitle = "❌ Critical/High issues found — review required before merge";
-    } else if (USE_V2_PIPELINE && aiResponse.conclusion === "neutral") {
+    } else if (pipelineResult.conclusion === "neutral") {
       checkRunTitle = "⚠️ Minor issues found — review recommended";
-    } else if (aiResponse.conclusion === "success") {
+    } else if (pipelineResult.conclusion === "success") {
       checkRunTitle = "✅ No issues found — safe to merge";
     }
 
@@ -405,7 +333,7 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
         name: "AI Code Review",
         head_sha: payload.pull_request.head.sha,
         status: "completed",
-        conclusion: aiResponse.conclusion,
+        conclusion: pipelineResult.conclusion,
         output: {
           title: checkRunTitle,
           summary: commentBody.slice(0, GITHUB_COMMENT_LIMIT),
@@ -441,7 +369,7 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
       prId,
       repo: repoFullName,
       filesReviewed: reviewableFiles.length,
-      conclusion: aiResponse.conclusion,
+      conclusion: pipelineResult.conclusion,
       issues: issuesInPR,
       passes: passesInPR,
     });
@@ -463,7 +391,6 @@ export const pullRequestWebhook = async (
   payload: unknown
 ) => {
   try {
-    // FIX #14: Validate webhook payload with Zod
     const parsed = pullRequestPayloadSchema.safeParse(payload);
     if (!parsed.success) {
       logger.error("WEBHOOK", "Invalid PR webhook payload", {
@@ -492,7 +419,7 @@ export const pullRequestWebhook = async (
       return res.status(200).send("Review disabled for this repo");
     }
 
-    // C1: Handle both 'opened' (new PR) and 'synchronize' (new commits pushed)
+    // Handle both 'opened' (new PR) and 'synchronize' (new commits pushed)
     if (action !== "opened" && action !== "synchronize") {
       logger.debug("WEBHOOK", `Action '${action}' ignored`, { prId: validPayload.pull_request.id });
       return res.status(200).send("Action ignored");
@@ -513,8 +440,7 @@ export const pullRequestWebhook = async (
       return res.status(200).send("Already reviewed");
     }
 
-    // FIX #5: Respond immediately, process in background.
-    // This prevents GitHub from retrying the webhook due to timeout.
+    // Respond immediately, process in background.
     res.status(200).send("Processing");
 
     logger.info("WEBHOOK", "Webhook accepted, starting background processing", {

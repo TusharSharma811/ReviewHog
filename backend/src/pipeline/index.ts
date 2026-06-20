@@ -1,66 +1,64 @@
 /**
- * V2 Review Pipeline — Orchestrator
+ * V3 Review Pipeline — Orchestrator
  *
  * Entry point for the multi-stage AI review pipeline.
- * Coordinates: classify → chunk → dispatch → collect → dedup → filter → summarize.
+ * Coordinates: classify → chunk → build diff → run 6-stage pipeline.
  *
- * Called from pullRequest.webhook.ts as a drop-in replacement for
- * the v1 safeRunPullRequestReview function.
+ * V3 Pipeline Stages:
+ *   1. General Code Review (LLM)
+ *   2. Repository Standards Review (parallel LLM calls per standard)
+ *   3. User Custom Prompt Review (LLM)
+ *   4. Aggregator (deterministic)
+ *   5. Deduplicator & Severity Classifier (LLM with deterministic fallback)
+ *   6. Final Report Generator (deterministic)
  */
 
 import type {
   PRContext,
   PRFile,
   PipelineResult,
-  PipelineStats,
-  ReviewerType,
-  Finding,
-  Conclusion,
 } from "./types.js";
 import { classifyFiles } from "./classifier.js";
 import { buildChunks } from "./chunker.js";
-import { dispatchReviewers } from "./dispatch.js";
-import { deduplicateFindings } from "./dedup.js";
-import { filterAndRank } from "./filter.js";
-import { generatePRSummary } from "./summarizer.js";
 import { resolveSettings } from "../reviewers/base.js";
 import { logger } from "../utils/logger.js";
+import prisma from "../db/prismaClient.js";
 
-// ─── Risk Score Computation ─────────────────────────────────────────────────
+// V3 Stage Imports
+import type { ReviewContext, RepoStandardRecord } from "./stages/types.js";
+import { ReviewPipelineEngine } from "./stages/engine.js";
+import { GeneralReviewStage } from "./stages/generalReview.js";
+import { StandardsReviewStage } from "./stages/standardsReview.js";
+import { UserPromptReviewStage } from "./stages/userPromptReview.js";
+import { AggregatorStage } from "./stages/aggregator.js";
+import { DeduplicatorStage } from "./stages/deduplicator.js";
+import { ReportGeneratorStage } from "./stages/reportGenerator.js";
 
-function computeRiskScore(findings: Finding[]): number {
-  if (findings.length === 0) return 0;
+// ─── Diff Builder ───────────────────────────────────────────────────────────
 
-  const weights = { critical: 40, high: 20, medium: 8, low: 2 };
-  let score = 0;
+/**
+ * Builds a consolidated diff string from all PR files.
+ * This is sent to each LLM stage as the code context.
+ */
+function buildDiffText(files: PRFile[]): string {
+  return files
+    .map(
+      (file, i) => `
+## File ${i + 1}: ${file.filename}
+Status: ${file.status}
 
-  for (const f of findings) {
-    score += weights[f.severity] * f.confidence;
-  }
+### Diff
+\`\`\`diff
+${file.patch}
+\`\`\`
 
-  return Math.min(100, Math.round(score));
-}
-
-function deriveConclusion(findings: Finding[]): Conclusion {
-  const hasCritical = findings.some((f) => f.severity === "critical");
-  const hasHigh = findings.some((f) => f.severity === "high");
-
-  if (hasCritical) return "failure";
-  if (hasHigh) return "failure";
-  if (findings.length === 0) return "success";
-  return "neutral";
-}
-
-function deriveRating(findings: Finding[]): number {
-  const critCount = findings.filter((f) => f.severity === "critical").length;
-  const highCount = findings.filter((f) => f.severity === "high").length;
-  const medCount = findings.filter((f) => f.severity === "medium").length;
-
-  if (critCount > 0) return 1;
-  if (highCount >= 2) return 2;
-  if (highCount === 1) return 3;
-  if (medCount > 0) return 4;
-  return 5;
+### Full file context
+\`\`\`
+${file.fullContent}
+\`\`\`
+`.trim()
+    )
+    .join("\n\n---\n\n");
 }
 
 // ─── Pipeline ───────────────────────────────────────────────────────────────
@@ -70,18 +68,15 @@ export async function runReviewPipeline(
   rawFiles: PRFile[]
 ): Promise<PipelineResult> {
   const startTime = Date.now();
-  const reviewersRun = new Set<ReviewerType>();
 
-  logger.info("PIPELINE", "Starting v2 review pipeline", {
+  logger.info("PIPELINE", "Starting v3 review pipeline", {
     prId: ctx.prId,
     repo: ctx.repoFullName,
     fileCount: rawFiles.length,
   });
 
-  // P1: Resolve AI settings once for the entire pipeline run
-  const aiSettings = await resolveSettings(ctx.ownerId);
+  // ── Pre-processing: Classify & Chunk (reused from V2) ──
 
-  // Stage 1: Classify files
   const classified = classifyFiles(rawFiles);
   const skippedCount = rawFiles.length - classified.length;
 
@@ -97,118 +92,105 @@ export async function runReviewPipeline(
     },
   });
 
-  // Stage 2: Chunk files
   const chunks = buildChunks(classified);
 
   logger.info("PIPELINE", "Chunks built", {
     prId: ctx.prId,
     chunkCount: chunks.length,
-    chunkSizes: chunks.map((c) => ({
-      id: c.id,
-      files: c.files.length,
-      tokens: c.totalTokens,
-      risk: c.maxRiskTier,
-    })),
   });
 
-  // Stage 3: Dispatch to reviewers (P0: parallel, P1: shared settings)
-  const { findings: rawFindings, reviewersUsed, totalTokensUsed, allReviewersFailed } = await dispatchReviewers(
-    chunks,
-    ctx,
-    aiSettings
-  );
-  for (const r of reviewersUsed) reviewersRun.add(r);
+  // ── Resolve AI settings ──
 
-  logger.info("PIPELINE", "Reviewers complete", {
-    prId: ctx.prId,
-    rawFindingsCount: rawFindings.length,
-    reviewers: Array.from(reviewersRun),
-    totalTokensUsed,
-    allReviewersFailed,
-  });
+  const aiSettings = await resolveSettings(ctx.ownerId);
 
-  // ⚠ CRITICAL: If all reviewers failed, do NOT report a clean result
-  if (allReviewersFailed) {
-    logger.error("PIPELINE", "All reviewers failed — returning error result", { prId: ctx.prId });
+  // ── Build diff text ──
 
-    const errorStats: PipelineStats = {
-      filesReviewed: classified.length,
-      filesSkipped: skippedCount,
-      chunksProcessed: chunks.length,
-      reviewersRun: Array.from(reviewersRun),
-      totalTokensUsed,
-      processingTimeMs: Date.now() - startTime,
-    };
+  const diff = buildDiffText(rawFiles);
 
-    return {
-      findings: [],
-      riskScore: -1,
-      conclusion: "failure" as Conclusion,
-      rating: 0,
-      summary: "⚠️ **Review could not be completed.** All AI reviewers failed due to rate limiting or API errors. " +
-        "Please try again later, or configure your own API key in Settings for reliable reviews.\n\n" +
-        `> Attempted reviewers: ${Array.from(reviewersRun).join(", ") || "none"}\n` +
-        `> Processed in ${((Date.now() - startTime) / 1000).toFixed(1)}s | Pipeline v2`,
-      stats: errorStats,
-    };
+  // ── Load repo standards from DB ──
+
+  let repoStandards: RepoStandardRecord[] = [];
+  try {
+    const standards = await prisma.repoStandard.findMany({
+      where: { ownerId: ctx.ownerId, isEnabled: true },
+      select: { id: true, name: true, prompt: true, isEnabled: true },
+    });
+    repoStandards = standards;
+  } catch (err) {
+    logger.warn("PIPELINE", "Failed to load repo standards", {
+      prId: ctx.prId,
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
-  // Stage 4: Deduplicate
-  const deduped = deduplicateFindings(rawFindings);
+  // ── Load per-repo review instructions ──
 
-  // Stage 5: Filter & rank
-  const filtered = filterAndRank(deduped);
+  let reviewInstructions: string | null = null;
+  try {
+    // Find the repo by matching the full name (owner/repo format)
+    const repo = await prisma.repo.findFirst({
+      where: {
+        ownerId: ctx.ownerId,
+        url: { contains: ctx.repoFullName },
+      },
+      select: { reviewInstructions: true },
+    });
+    reviewInstructions = repo?.reviewInstructions ?? null;
+  } catch (err) {
+    logger.warn("PIPELINE", "Failed to load review instructions", {
+      prId: ctx.prId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
-  logger.info("PIPELINE", "Findings processed", {
+  logger.info("PIPELINE", "Pipeline context built", {
     prId: ctx.prId,
-    raw: rawFindings.length,
-    afterDedup: deduped.length,
-    afterFilter: filtered.length,
+    standardsCount: repoStandards.length,
+    hasReviewInstructions: Boolean(reviewInstructions),
   });
 
-  // Stage 6: Generate PR summary comment
-  const conclusion = deriveConclusion(filtered);
-  const rating = deriveRating(filtered);
-  const riskScore = computeRiskScore(filtered);
+  // ── Build ReviewContext ──
 
-  const stats: PipelineStats = {
+  const reviewContext: ReviewContext = {
+    prContext: ctx,
+    diff,
+    repoStandards,
+    reviewInstructions,
+    aiSettings,
+    accumulatedFindings: [],
+    stageMetadata: {},
+  };
+
+  // ── Create & Configure Pipeline Engine ──
+
+  const engine = new ReviewPipelineEngine()
+    .addStage(new GeneralReviewStage())        // Stage 1: General Review
+    .addStage(new StandardsReviewStage())      // Stage 2: Standards Review
+    .addStage(new UserPromptReviewStage())     // Stage 3: User Prompt Review
+    .addStage(new AggregatorStage())           // Stage 4: Aggregator
+    .addStage(new DeduplicatorStage())         // Stage 5: Deduplicator
+    .addStage(new ReportGeneratorStage());     // Stage 6: Report Generator
+
+  // ── Execute Pipeline ──
+
+  const result = await engine.execute(reviewContext, {
     filesReviewed: classified.length,
     filesSkipped: skippedCount,
     chunksProcessed: chunks.length,
-    reviewersRun: Array.from(reviewersRun),
-    totalTokensUsed, // C3: Now tracks actual API usage
-    processingTimeMs: Date.now() - startTime,
-  };
-
-  const summary = await generatePRSummary({
-    findings: filtered,
-    riskScore,
-    conclusion,
-    rating,
-    stats,
-    ctx,
+    startTime,
   });
 
-  stats.processingTimeMs = Date.now() - startTime;
-
-  logger.info("PIPELINE", "Pipeline complete", {
+  logger.info("PIPELINE", "Pipeline v3 complete", {
     prId: ctx.prId,
-    riskScore,
-    rating,
-    conclusion,
-    findingsCount: filtered.length,
-    totalTokensUsed,
-    processingTimeMs: stats.processingTimeMs,
+    riskScore: result.riskScore,
+    rating: result.rating,
+    conclusion: result.conclusion,
+    findingsCount: result.findings.length,
+    totalTokensUsed: result.stats.totalTokensUsed,
+    stagesRun: result.stats.stagesRun,
+    standardsTriggered: result.stats.standardsTriggered,
+    processingTimeMs: result.stats.processingTimeMs,
   });
 
-  return {
-    findings: filtered,
-    riskScore,
-    conclusion,
-    rating,
-    summary,
-    stats,
-  };
+  return result;
 }
-
-

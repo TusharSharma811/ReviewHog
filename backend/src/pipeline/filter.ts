@@ -15,6 +15,7 @@ const SEVERITY_ORDER: Record<Severity, number> = {
   high: 1,
   medium: 2,
   low: 3,
+  info: 4,
 };
 
 /**

@@ -282,6 +282,7 @@ function parseReviewerOutput(raw: string, reviewerType: ReviewerType): ReviewerO
       reviewerType,
       lineRange: f.lineRange,
       suggestion: f.suggestion,
+      source: f.source ?? [],
     })),
     noIssues: validated.noIssues,
   };
@@ -289,7 +290,7 @@ function parseReviewerOutput(raw: string, reviewerType: ReviewerType): ReviewerO
 
 // ─── Public: Resolve Settings (call once per pipeline run) ──────────────────
 
-export { resolveSettings };
+export { resolveSettings, callLLMProvider, parseReviewerOutput, extractJSON, normalizeContent, formatChunkForPrompt };
 export type { ResolvedSettings };
 
 // ─── Public: Run a Reviewer ─────────────────────────────────────────────────
