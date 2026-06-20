@@ -49,9 +49,20 @@ export const repoHandlerWebhook = async (
     switch (action) {
       case "added":
         if (validPayload.repositories_added) {
-          const defaultRepoReviewOn = await getDefaultRepoReviewOn(
-            validPayload.installation.account.id.toString()
-          );
+          const ownerId = validPayload.installation.account.id.toString();
+
+          // Ensure user exists (same reason as installation webhook)
+          await prisma.user.upsert({
+            where: { id: ownerId },
+            update: {},
+            create: {
+              id: ownerId,
+              email: "",
+              name: validPayload.installation.account.html_url.split("/").pop() || "github-user",
+            },
+          });
+
+          const defaultRepoReviewOn = await getDefaultRepoReviewOn(ownerId);
 
           await prisma.repo.createMany({
             data: validPayload.repositories_added.map((repo) => ({
@@ -59,10 +70,16 @@ export const repoHandlerWebhook = async (
               name: repo.full_name,
               description: repo.description ?? "",
               url: validPayload.installation.account.html_url + `/${repo.name}`,
-              ownerId: validPayload.installation.account.id.toString(),
+              ownerId,
               isReviewOn: defaultRepoReviewOn,
             })),
             skipDuplicates: true,
+          });
+
+          logger.info("WEBHOOK", "Repos added via installation_repositories", {
+            ownerId,
+            repoCount: validPayload.repositories_added.length,
+            repos: validPayload.repositories_added.map(r => r.full_name),
           });
         }
         break;

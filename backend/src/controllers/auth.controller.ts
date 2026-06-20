@@ -9,7 +9,9 @@ import { z } from "zod";
 
 const callbackSchema = z.object({
   code: z.string().min(1, "Missing code parameter"),
-  state: z.string().min(1, "Missing state parameter"),
+  state: z.string().optional(), // Optional: absent during GitHub App installation flow
+  installation_id: z.string().optional(),
+  setup_action: z.string().optional(),
 });
 
 interface GitHubTokenResponse {
@@ -82,11 +84,15 @@ export const githubCallback = async (req: Request, res: Response) => {
     return res.status(400).send(parsed.error.issues[0].message);
   }
 
-  const { code, state } = parsed.data;
+  const { code, state, setup_action } = parsed.data;
 
   // SEC-3 + SEC-10: Verify the state parameter matches the cookie
+  // Skip state validation for GitHub App installation callbacks (setup_action=install)
+  // because GitHub doesn't include state in the installation redirect URL.
+  const isInstallationCallback = setup_action === "install";
   const storedState = req.cookies?.oauth_state;
-  if (!storedState || storedState !== state) {
+
+  if (!isInstallationCallback && (!storedState || storedState !== state)) {
     logger.warn("AUTH", "OAuth state mismatch — possible CSRF attempt", {
       hasStoredState: Boolean(storedState),
       stateMatch: storedState === state,

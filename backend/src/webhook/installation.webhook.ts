@@ -46,21 +46,42 @@ export const installationWebhook = async (
 
     switch (action) {
       case "created": {
-        const defaultRepoReviewOn = await getDefaultRepoReviewOn(
-          validPayload.installation.account.id.toString()
-        );
+        const ownerId = validPayload.installation.account.id.toString();
 
-        await prisma.repo.createMany({
-          data: validPayload.repositories.map((repo) => ({
-            id: repo.id.toString(),
-            name: repo.full_name,
-            description: repo.description ?? "",
-            url: validPayload.installation.account.html_url + `/${repo.name}`,
-            ownerId: validPayload.installation.account.id.toString(),
-            isReviewOn: defaultRepoReviewOn,
-          })),
-          skipDuplicates: true,
+        // Ensure user exists — the webhook can fire before the user has
+        // completed OAuth login, so the User record may not exist yet.
+        // Create a stub user that will be updated with full details on login.
+        await prisma.user.upsert({
+          where: { id: ownerId },
+          update: {},  // Don't overwrite existing user data
+          create: {
+            id: ownerId,
+            email: "",
+            name: validPayload.installation.account.html_url.split("/").pop() || "github-user",
+          },
         });
+
+        const defaultRepoReviewOn = await getDefaultRepoReviewOn(ownerId);
+
+        if (validPayload.repositories.length > 0) {
+          await prisma.repo.createMany({
+            data: validPayload.repositories.map((repo) => ({
+              id: repo.id.toString(),
+              name: repo.full_name,
+              description: repo.description ?? "",
+              url: validPayload.installation.account.html_url + `/${repo.name}`,
+              ownerId,
+              isReviewOn: defaultRepoReviewOn,
+            })),
+            skipDuplicates: true,
+          });
+
+          logger.info("WEBHOOK", "Installation repos created", {
+            ownerId,
+            repoCount: validPayload.repositories.length,
+            repos: validPayload.repositories.map(r => r.full_name),
+          });
+        }
         break;
       }
 
