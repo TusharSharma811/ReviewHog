@@ -45,7 +45,7 @@ model Repo {
   owner       User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId     String
   reviews     Review[]
-  isReviewOn          Boolean    @default(false)
+  isReviewOn          Boolean    @default(true)
   reviewInstructions  String?    // Per-repo custom review prompt
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt

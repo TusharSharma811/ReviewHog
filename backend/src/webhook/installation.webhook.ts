@@ -15,7 +15,7 @@ const installationPayloadSchema = z.object({
     id: z.number(),
     name: z.string(),
     full_name: z.string(),
-    description: z.string().nullable(),
+    description: z.string().nullish(),
   })).optional().default([]),
 });
 
