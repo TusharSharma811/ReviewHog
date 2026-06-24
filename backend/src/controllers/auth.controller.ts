@@ -182,17 +182,17 @@ export const githubCallback = async (req: Request, res: Response) => {
       email: user.email,
     });
 
-    // Set JWT as HttpOnly cookie (works for same-site deployments)
+    // Set JWT as HttpOnly cookie. In production this is expected to be reached
+    // through the frontend's /api rewrite so the cookie belongs to the app host.
     res.cookie("token", userToken, AUTH_COOKIE_OPTIONS);
 
-    // Also pass token as URL param for cross-origin deployments where
-    // third-party cookies are blocked by the browser (Chrome 2024+).
-    // The frontend captures this immediately and cleans the URL.
-    const redirectUrl = isNewUser
-      ? `${process.env.FRONTEND_URL}/dashboard?token=${userToken}&new=true`
-      : `${process.env.FRONTEND_URL}/dashboard?token=${userToken}`;
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const redirectUrl = new URL("/dashboard", frontendUrl);
+    if (isNewUser) {
+      redirectUrl.searchParams.set("new", "true");
+    }
 
-    return res.redirect(redirectUrl);
+    return res.redirect(redirectUrl.toString());
   } catch (err) {
     logger.error("AUTH", "Callback error", { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).send("Internal Server Error");

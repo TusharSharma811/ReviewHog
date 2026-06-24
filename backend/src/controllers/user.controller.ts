@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
+import axios from "axios";
 import prisma from "../db/prismaClient.js";
 import { logger } from "../utils/logger.js";
 import {
   DEFAULT_OPENROUTER_MODEL,
+  decryptAISecret,
   encryptAISecret,
   getDefaultOpenRouterApiKey,
   getEffectiveOpenRouterModel,
@@ -145,6 +147,16 @@ const addRepoSchema = z.object({
   language: z.string().optional().nullable(),
 });
 
+interface GitHubRepoResponse {
+  id: number;
+  full_name: string;
+  html_url: string;
+  description: string | null;
+  language: string | null;
+  stargazers_count: number;
+  forks_count: number;
+}
+
 export const addRepository = async (req: Request, res: Response) => {
   const userId = (req as RequestWithUser).user?.id;
 
@@ -158,31 +170,68 @@ export const addRepository = async (req: Request, res: Response) => {
   }
 
   const { name, description, language } = parsed.data;
-  const url = `https://github.com/${name}`;
 
   try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { githubToken: true, defaultRepoReviewOn: true },
+    });
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ message: "GitHub token not available. Please re-login before adding repositories." });
+    }
+
+    let githubToken: string | null;
+    try {
+      githubToken = decryptAISecret(user.githubToken);
+    } catch {
+      return res.status(400).json({ message: "GitHub token could not be decrypted. Please re-login." });
+    }
+
+    if (!githubToken) {
+      return res.status(400).json({ message: "GitHub token not available. Please re-login before adding repositories." });
+    }
+
+    const repoRes = await axios.get<GitHubRepoResponse>(
+      `https://api.github.com/repos/${name}`,
+      {
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: "application/vnd.github+json",
+        },
+      }
+    );
+
+    const githubRepo = repoRes.data;
+    const url = githubRepo.html_url;
+    const githubRepoId = githubRepo.id.toString();
+
     // Check if repo already exists for this user
     const existing = await prisma.repo.findFirst({
-      where: { url, ownerId: userId },
+      where: {
+        ownerId: userId,
+        OR: [
+          { url },
+          { githubRepoId },
+        ],
+      },
     });
 
     if (existing) {
       return res.status(409).json({ message: "Repository already connected" });
     }
 
-    const userSettings = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { defaultRepoReviewOn: true },
-    });
-
     const repo = await prisma.repo.create({
       data: {
-        name,
-        description,
-        language,
+        githubRepoId,
+        name: githubRepo.full_name,
+        description: githubRepo.description ?? description,
+        language: githubRepo.language ?? language,
         url,
         ownerId: userId,
-        isReviewOn: userSettings?.defaultRepoReviewOn ?? true,
+        stars: githubRepo.stargazers_count ?? 0,
+        forks: githubRepo.forks_count ?? 0,
+        isReviewOn: user.defaultRepoReviewOn ?? true,
       },
     });
 
@@ -191,6 +240,16 @@ export const addRepository = async (req: Request, res: Response) => {
       repo,
     });
   } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      if (status === 404) {
+        return res.status(404).json({ message: "GitHub repository not found or not accessible." });
+      }
+      if (status === 401 || status === 403) {
+        return res.status(403).json({ message: "GitHub access denied. Please re-login or check repository permissions." });
+      }
+    }
+
     logger.error("USER", "Error adding repository", { error: error instanceof Error ? error.message : String(error) });
     res.status(500).json({ message: "Internal server error" });
   }

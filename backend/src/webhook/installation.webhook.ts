@@ -64,17 +64,26 @@ export const installationWebhook = async (
         const defaultRepoReviewOn = await getDefaultRepoReviewOn(ownerId);
 
         if (validPayload.repositories.length > 0) {
-          await prisma.repo.createMany({
-            data: validPayload.repositories.map((repo) => ({
-              id: repo.id.toString(),
-              name: repo.full_name,
-              description: repo.description ?? "",
-              url: validPayload.installation.account.html_url + `/${repo.name}`,
-              ownerId,
-              isReviewOn: defaultRepoReviewOn,
-            })),
-            skipDuplicates: true,
-          });
+          await Promise.all(validPayload.repositories.map((repo) => {
+            const url = validPayload.installation.account.html_url + `/${repo.name}`;
+            return prisma.repo.upsert({
+              where: { ownerId_url: { ownerId, url } },
+              update: {
+                githubRepoId: repo.id.toString(),
+                name: repo.full_name,
+                description: repo.description ?? "",
+                isReviewOn: defaultRepoReviewOn,
+              },
+              create: {
+                githubRepoId: repo.id.toString(),
+                name: repo.full_name,
+                description: repo.description ?? "",
+                url,
+                ownerId,
+                isReviewOn: defaultRepoReviewOn,
+              },
+            });
+          }));
 
           logger.info("WEBHOOK", "Installation repos created", {
             ownerId,
@@ -86,15 +95,15 @@ export const installationWebhook = async (
       }
 
       case "deleted":
-        // With onDelete: Cascade in schema, deleting the user will
-        // automatically cascade-delete their repos, reviews, and insights.
-        await prisma.user.delete({
+        // Disconnect repositories for this installation, but keep the user,
+        // settings, repositories, and historical review data intact.
+        await prisma.repo.updateMany({
           where: {
-            id: validPayload.installation.account.id.toString(),
+            ownerId: validPayload.installation.account.id.toString(),
           },
+          data: { isReviewOn: false },
         }).catch((err: Error) => {
-          // User might not exist (e.g., never logged in via OAuth)
-          logger.warn("WEBHOOK", "User delete failed (may not exist)", { error: err.message });
+          logger.warn("WEBHOOK", "Repo disable after uninstall failed", { error: err.message });
         });
         break;
 

@@ -22,6 +22,13 @@ interface ReviewSummary {
   repo: { id: string; name: string };
 }
 
+interface ReviewHistoryItem {
+  id: string;
+  repoName: string;
+  createdAt: string;
+  rating: number | null;
+}
+
 function DeltaIndicator({ before, after, lowerIsBetter = false }: { before: number; after: number; lowerIsBetter?: boolean }) {
   const delta = after - before;
   if (delta === 0) return <span className="text-xs text-muted-foreground flex items-center gap-0.5"><Minus className="h-3 w-3" /> No change</span>;
@@ -39,7 +46,7 @@ const ReviewCompare = () => {
   const [searchParams] = useSearchParams();
   const [reviews, setReviews] = useState<ReviewSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [allReviews, setAllReviews] = useState<{ id: string; repoName: string; createdAt: string; rating: number | null }[]>([]);
+  const [allReviews, setAllReviews] = useState<ReviewHistoryItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [picking, setPicking] = useState(false);
 
@@ -68,7 +75,7 @@ const ReviewCompare = () => {
       const res = await authFetch(`${API_BASE_URL}/api/users/data/reviews/history?days=90`);
       if (res.ok) {
         const data = await res.json();
-        setAllReviews(data.reviews.map((r: any) => ({
+        setAllReviews((data.reviews as ReviewHistoryItem[]).map((r) => ({
           id: r.id, repoName: r.repoName, createdAt: r.createdAt, rating: r.rating,
         })));
       }

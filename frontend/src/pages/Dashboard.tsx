@@ -9,7 +9,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
 import { toast } from "sonner";
-import { setToken, removeToken, authFetch } from "@/lib/auth";
+import { authFetch } from "@/lib/auth";
 import { useTheme } from "@/lib/useTheme";
 import LOGO from "../assets/47509314-ae8b-44c2-b8c0-5d5a8a7ff228.png";
 
@@ -26,10 +26,34 @@ interface UserData {
   name?: string;
   email?: string;
   avatarUrl?: string;
-  repos: any[];
-  reviews: any[];
-  insights: any;
+  repos: RepositorySummary[];
+  reviews: ReviewSummary[];
+  insights: Record<string, unknown> | null;
   pagination?: Pagination;
+}
+
+interface RepositorySummary {
+  id: string;
+  name: string;
+  description?: string | null;
+  isReviewOn: boolean;
+  stars?: number;
+  forks?: number;
+  language?: string | null;
+  reviews?: { createdAt: string }[];
+  reviewInstructions?: string | null;
+}
+
+interface ReviewSummary {
+  id: string;
+  comment?: string | null;
+  rating?: number | null;
+  prUrl?: string | null;
+  createdAt: string;
+  repo?: {
+    id: string;
+    name: string;
+  };
 }
 
 interface MetricsData {
@@ -58,6 +82,22 @@ interface MetricsData {
   }[];
 }
 
+interface GitHubActivityData {
+  available: boolean;
+  message?: string;
+  pushes?: { thisWeek: number; thisMonth: number };
+  commits?: { thisWeek: number; thisMonth: number };
+  prsOpened?: { thisWeek: number; thisMonth: number };
+  prsMerged?: { thisWeek: number; thisMonth: number };
+  issuesOpened?: { thisWeek: number; thisMonth: number };
+  branches?: { thisMonth: number };
+  mostActiveRepo?: { name: string; eventCount: number } | null;
+  languageBreakdown?: { language: string; count: number }[];
+  contributionStreak?: number;
+  dailyPushes?: { date: string; count: number; label: string }[];
+  repoActivity?: { name: string; pushes: number; prs: number; issues: number }[];
+}
+
 const GITHUB_APP_INSTALL_URL = "https://github.com/apps/reviewhog/installations/new";
 
 const Dashboard = () => {
@@ -70,7 +110,7 @@ const Dashboard = () => {
   const [metricsData, setMetricsData] = useState<MetricsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [metricsLoading, setMetricsLoading] = useState(true);
-  const [activityData, setActivityData] = useState<any>(null);
+  const [activityData, setActivityData] = useState<GitHubActivityData | null>(null);
   const [activityLoading, setActivityLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [repoPage, setRepoPage] = useState(1);
@@ -180,20 +220,13 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    // Capture JWT from OAuth redirect URL, store it, and clean the URL.
-    // This is the primary auth mechanism for cross-origin deployments
-    // (e.g., Vercel frontend + Render backend) where third-party cookies
-    // are blocked by modern browsers.
-    const urlToken = searchParams.get("token");
-    if (urlToken) {
-      setToken(urlToken);
+    // Clean one-time onboarding marker from the OAuth redirect URL.
+    if (searchParams.has("new")) {
       const url = new URL(window.location.href);
-      url.searchParams.delete("token");
       url.searchParams.delete("new");
       window.history.replaceState({}, "", url.toString());
     }
 
-    // fetchData will send the token as Authorization header.
     fetchData().then((data) => {
       if (isNewUser) {
         toast.success("Welcome to ReviewHog! 🎉", {
@@ -244,9 +277,6 @@ const Dashboard = () => {
     } catch {
       // Best-effort — continue with client-side cleanup
     }
-
-    // Clear localStorage fallback token
-    removeToken();
 
     // Hard redirect to clear all React state (prevents stale auth)
     window.location.href = "/";

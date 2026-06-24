@@ -4,11 +4,9 @@ import Loader from "@/components/Loader";
 import { useNavigate } from "react-router-dom";
 import { AiSettingsPanel } from "@/components/AiSettingsPanel";
 import { ReviewSettingsPanel } from "@/components/ReviewSettingsPanel";
-import { RepoStandardsPanel } from "@/components/RepoStandardsPanel";
-import { CustomRulesPanel } from "@/components/CustomRulesPanel";
 import { BadgeSettings } from "@/components/BadgeSettings";
 import { API_BASE_URL } from "@/config";
-import { authFetch, getToken, removeToken } from "@/lib/auth";
+import { authFetch } from "@/lib/auth";
 import { toast } from "sonner";
 import LOGO from "../assets/47509314-ae8b-44c2-b8c0-5d5a8a7ff228.png";
 
@@ -51,16 +49,15 @@ const Settings = () => {
   }, [navigate]);
 
   useEffect(() => {
-    if (!getToken()) {
-      navigate("/", { replace: true });
-      return;
-    }
-
     loadUser();
   }, [loadUser, navigate]);
 
-  const handleLogout = () => {
-    removeToken();
+  const handleLogout = async () => {
+    try {
+      await authFetch(`${API_BASE_URL}/api/auth/logout`, { method: "POST" });
+    } catch {
+      // Best-effort logout; the redirect clears client state.
+    }
     window.location.href = "/";
   };
 
@@ -124,8 +121,6 @@ const Settings = () => {
           <div className="xl:col-span-2 space-y-8">
             <AiSettingsPanel />
             <ReviewSettingsPanel />
-            <RepoStandardsPanel />
-            <CustomRulesPanel />
             <BadgeSettings />
           </div>
 

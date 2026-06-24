@@ -243,7 +243,8 @@ export class DeduplicatorStage implements ReviewStage {
       const { content, tokensUsed: used } = await callLLMProvider(
         DEDUP_SYSTEM_PROMPT,
         userPrompt,
-        aiSettings
+        aiSettings,
+        DEDUP_RESPONSE_FORMAT
       );
       tokensUsed = used;
 

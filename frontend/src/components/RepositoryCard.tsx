@@ -1,5 +1,5 @@
 import ToggleSwitch from "./ToggleSwitch";
-import { GitFork, Star, ChevronDown, Trash2, Plus, MessageSquare, Check, X, Loader2 } from "lucide-react";
+import { GitFork, Star, ChevronDown, Trash2, Plus, MessageSquare, Check, X, Loader2, Thermometer } from "lucide-react";
 import { useState } from "react";
 import { API_BASE_URL } from "@/config";
 import { authFetch } from "@/lib/auth";
@@ -15,6 +15,7 @@ interface Repository {
   language?: string | null;
   reviews?: { createdAt: string }[];
   reviewInstructions?: string | null;
+  temperature?: number;
 }
 
 interface RepositoryCardProps {
@@ -39,42 +40,57 @@ function timeAgo(dateStr: string): string {
   return date.toLocaleDateString();
 }
 
-// ─── Per-Repo Review Instructions (inline toggle) ───────────────────────────
+// ─── Per-Repo Settings Editor (instructions + temperature) ──────────────────
 
-function ReviewInstructionsEditor({ repoId, initial }: { repoId: string; initial: string | null }) {
+function RepoSettingsEditor({
+  repoId,
+  initialInstructions,
+  initialTemperature,
+}: {
+  repoId: string;
+  initialInstructions: string | null;
+  initialTemperature: number;
+}) {
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(initial ?? "");
+  const [instructions, setInstructions] = useState(initialInstructions ?? "");
+  const [temperature, setTemperature] = useState(initialTemperature);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(initial ?? "");
+  const [savedInstructions, setSavedInstructions] = useState(initialInstructions ?? "");
+  const [savedTemperature, setSavedTemperature] = useState(initialTemperature);
 
   const handleSave = async () => {
     setSaving(true);
     try {
       const res = await authFetch(
-        `${API_BASE_URL}/api/users/data/repos/${repoId}/review-instructions`,
+        `${API_BASE_URL}/api/users/data/repos/${repoId}/settings`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reviewInstructions: value.trim() || null }),
+          body: JSON.stringify({
+            reviewInstructions: instructions.trim() || null,
+            temperature,
+          }),
         }
       );
       if (res.ok) {
-        toast.success("Review instructions saved");
-        setSaved(value.trim());
+        toast.success("Repo settings saved");
+        setSavedInstructions(instructions.trim());
+        setSavedTemperature(temperature);
         setOpen(false);
       } else {
         const data = await res.json();
         toast.error(data.message || "Failed to save");
       }
     } catch {
-      toast.error("Failed to save instructions");
+      toast.error("Failed to save settings");
     } finally {
       setSaving(false);
     }
   };
 
   const handleCancel = () => {
-    setValue(saved);
+    setInstructions(savedInstructions);
+    setTemperature(savedTemperature);
     setOpen(false);
   };
 
@@ -86,44 +102,81 @@ function ReviewInstructionsEditor({ repoId, initial }: { repoId: string; initial
           className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors cursor-pointer rounded-md hover:bg-indigo-50 dark:hover:bg-indigo-950/30 px-2 py-1"
         >
           <MessageSquare className="h-3 w-3" />
-          {saved ? "Edit review prompt" : "Add review prompt"}
+          {savedInstructions ? "Edit user instructions" : "Add user instructions"}
+          {savedTemperature !== 0.1 && (
+            <span className="ml-1 text-muted-foreground">
+              · temp {savedTemperature.toFixed(2)}
+            </span>
+          )}
         </button>
       ) : (
-        <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
-          <textarea
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="e.g. Focus on error handling, ensure all async functions have try-catch blocks, check for proper input validation..."
-            rows={3}
-            maxLength={5000}
-            className="w-full px-3 py-2 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-background text-foreground text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none placeholder:text-muted-foreground/60"
-          />
-          <div className="flex items-center justify-between">
+        <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+          {/* Instructions */}
+          <div>
+            <label className="text-xs font-medium text-foreground mb-1 block">
+              User Instructions
+            </label>
+            <textarea
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              placeholder="Define your review standards and instructions here. e.g. Focus on error handling, ensure all async functions have try-catch blocks, enforce naming conventions..."
+              rows={4}
+              maxLength={5000}
+              className="w-full px-3 py-2 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-background text-foreground text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none placeholder:text-muted-foreground/60"
+            />
             <span className="text-xs text-muted-foreground">
-              {value.length}/5000
+              {instructions.length}/5000
             </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={handleCancel}
-                disabled={saving}
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors cursor-pointer disabled:opacity-50"
-              >
-                <X className="h-3 w-3" />
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="inline-flex items-center gap-1 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1 rounded-md transition-colors cursor-pointer disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Check className="h-3 w-3" />
-                )}
-                Save
-              </button>
+          </div>
+
+          {/* Temperature slider */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-medium text-foreground flex items-center gap-1">
+                <Thermometer className="h-3 w-3 text-orange-500" />
+                Temperature
+              </label>
+              <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                {temperature.toFixed(2)}
+              </span>
             </div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={temperature}
+              onChange={(e) => setTemperature(parseFloat(e.target.value))}
+              className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-indigo-500"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground mt-0.5">
+              <span>Precise (0.0)</span>
+              <span>Creative (1.0)</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-1.5">
+            <button
+              onClick={handleCancel}
+              disabled={saving}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <X className="h-3 w-3" />
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center gap-1 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1 rounded-md transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {saving ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Check className="h-3 w-3" />
+              )}
+              Save
+            </button>
           </div>
         </div>
       )}
@@ -247,10 +300,11 @@ export const RepositoryCard = ({
                       )}
                     </div>
                   </div>
-                  {/* Per-repo review instructions — reveals on button click */}
-                  <ReviewInstructionsEditor
+                  {/* Per-repo user instructions + temperature */}
+                  <RepoSettingsEditor
                     repoId={repo.id}
-                    initial={repo.reviewInstructions ?? null}
+                    initialInstructions={repo.reviewInstructions ?? null}
+                    initialTemperature={repo.temperature ?? 0.1}
                   />
                 </div>
               );

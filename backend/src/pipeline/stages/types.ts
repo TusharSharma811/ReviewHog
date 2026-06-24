@@ -5,17 +5,8 @@
  * Each stage implements ReviewStage and operates on a shared ReviewContext.
  */
 
-import type { PRContext, Finding, PipelineResult } from "../types.js";
+import type { PRContext, Finding, PipelineResult, ReviewChunk } from "../types.js";
 import type { ResolvedSettings } from "../../reviewers/base.js";
-
-// ─── Repository Standard (matches Prisma model) ────────────────────────────
-
-export interface RepoStandardRecord {
-  id: string;
-  name: string;
-  prompt: string;
-  isEnabled: boolean;
-}
 
 // ─── Review Context ─────────────────────────────────────────────────────────
 
@@ -24,9 +15,9 @@ export interface ReviewContext {
   prContext: PRContext;
   /** Full PR diff text (all files concatenated) */
   diff: string;
-  /** Repository standards from DB */
-  repoStandards: RepoStandardRecord[];
-  /** Per-repo custom review instructions */
+  /** Token-bounded review chunks */
+  reviewChunks: ReviewChunk[];
+  /** Per-repo custom user instructions */
   reviewInstructions: string | null;
   /** Pre-resolved AI/LLM settings */
   aiSettings: ResolvedSettings;
@@ -43,6 +34,7 @@ export interface StageResult {
   findings: Finding[];
   tokensUsed: number;
   failed: boolean;
+  skipped?: boolean;  // True if stage had no work to do (no user instructions, etc.)
   metadata?: Record<string, unknown>;
 }
 

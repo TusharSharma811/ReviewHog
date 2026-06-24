@@ -63,6 +63,7 @@ export interface PRContext {
   installationId: string;
   commentsUrl: string;
   prUrl: string;
+  githubRepoId: string; // GitHub numeric repo ID for DB lookup
 }
 
 // ─── Findings ───────────────────────────────────────────────────────────────
@@ -120,7 +121,6 @@ export interface PipelineStats {
   totalTokensUsed: number;
   processingTimeMs: number;
   stagesRun: string[];
-  standardsTriggered: string[];
 }
 
 export interface PipelineResult {

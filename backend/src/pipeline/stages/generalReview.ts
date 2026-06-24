@@ -7,14 +7,15 @@
  */
 
 import crypto from "crypto";
+import pLimit from "p-limit";
 import type { ReviewStage, ReviewContext, StageResult } from "./types.js";
 import type { Finding } from "../types.js";
-import { callLLMProvider, extractJSON } from "../../reviewers/base.js";
+import { callLLMProvider, extractJSON, formatChunkForPrompt } from "../../reviewers/base.js";
 import { reviewerOutputSchema } from "../../prompts/schemas.js";
-import { REVIEWER_RESPONSE_FORMAT } from "../../prompts/schemas.js";
 import { logger } from "../../utils/logger.js";
 
 const STAGE_NAME = "General Review";
+const GENERAL_REVIEW_CONCURRENCY = Number(process.env.GENERAL_REVIEW_CONCURRENCY || 2);
 
 const GENERAL_REVIEW_SYSTEM_PROMPT = `You are a senior software engineer performing a thorough code review.
 
@@ -50,64 +51,93 @@ export class GeneralReviewStage implements ReviewStage {
   name = STAGE_NAME;
 
   async execute(context: ReviewContext): Promise<StageResult> {
-    const { prContext, diff, aiSettings } = context;
+    const { prContext, reviewChunks, aiSettings } = context;
 
     logger.info("STAGE", `[${STAGE_NAME}] Starting`, { prId: prContext.prId });
 
-    try {
-      const userPrompt = `Review the following PR diff:\n\n${diff}`;
-
-      const { content, tokensUsed } = await callLLMProvider(
-        GENERAL_REVIEW_SYSTEM_PROMPT,
-        userPrompt,
-        aiSettings
-      );
-
-      if (!content.trim()) {
-        throw new Error("Empty response from model");
-      }
-
-      const jsonStr = extractJSON(content);
-      const parsed = JSON.parse(jsonStr);
-      const validated = reviewerOutputSchema.parse(parsed);
-
-      const findings: Finding[] = validated.findings.map((f) => ({
-        ...f,
-        id: crypto
-          .createHash("md5")
-          .update(`general:${f.file}:${f.category}:${f.title}`)
-          .digest("hex")
-          .slice(0, 12),
-        reviewerType: "general" as const,
-        lineRange: f.lineRange,
-        suggestion: f.suggestion,
-        source: [STAGE_NAME],
-      }));
-
-      logger.info("STAGE", `[${STAGE_NAME}] Complete`, {
-        prId: prContext.prId,
-        findingsCount: findings.length,
-        tokensUsed,
-      });
-
-      return {
-        stageName: STAGE_NAME,
-        findings,
-        tokensUsed,
-        failed: false,
-      };
-    } catch (err) {
-      logger.error("STAGE", `[${STAGE_NAME}] Failed`, {
-        prId: prContext.prId,
-        error: err instanceof Error ? err.message : String(err),
-      });
-
+    if (reviewChunks.length === 0) {
       return {
         stageName: STAGE_NAME,
         findings: [],
         tokensUsed: 0,
-        failed: true,
+        failed: false,
+        skipped: true,
       };
     }
+
+    const limit = pLimit(GENERAL_REVIEW_CONCURRENCY);
+    let totalTokens = 0;
+    const allFindings: Finding[] = [];
+    let allFailed = true;
+
+    const results = await Promise.allSettled(
+      reviewChunks.map((chunk) =>
+        limit(async () => {
+          try {
+            const userPrompt = `Review the following PR chunk:\n\n${formatChunkForPrompt(chunk)}`;
+
+            const { content, tokensUsed } = await callLLMProvider(
+              GENERAL_REVIEW_SYSTEM_PROMPT,
+              userPrompt,
+              aiSettings
+            );
+
+            if (!content.trim()) {
+              throw new Error("Empty response from model");
+            }
+
+            const jsonStr = extractJSON(content);
+            const parsed = JSON.parse(jsonStr);
+            const validated = reviewerOutputSchema.parse(parsed);
+
+            const findings: Finding[] = validated.findings.map((f) => ({
+              ...f,
+              id: crypto
+                .createHash("md5")
+                .update(`general:${chunk.id}:${f.file}:${f.category}:${f.title}`)
+                .digest("hex")
+                .slice(0, 12),
+              reviewerType: "general" as const,
+              lineRange: f.lineRange,
+              suggestion: f.suggestion,
+              source: [STAGE_NAME],
+            }));
+
+            return { findings, tokensUsed, failed: false };
+          } catch (err) {
+            logger.error("STAGE", `[${STAGE_NAME}] Chunk failed`, {
+              prId: prContext.prId,
+              chunkId: chunk.id,
+              error: err instanceof Error ? err.message : String(err),
+            });
+
+            return { findings: [] as Finding[], tokensUsed: 0, failed: true };
+          }
+        })
+      )
+    );
+
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        allFindings.push(...result.value.findings);
+        totalTokens += result.value.tokensUsed;
+        if (!result.value.failed) allFailed = false;
+      }
+    }
+
+    logger.info("STAGE", `[${STAGE_NAME}] Complete`, {
+      prId: prContext.prId,
+      findingsCount: allFindings.length,
+      tokensUsed: totalTokens,
+      chunks: reviewChunks.length,
+      failed: allFailed,
+    });
+
+    return {
+      stageName: STAGE_NAME,
+      findings: allFindings,
+      tokensUsed: totalTokens,
+      failed: allFailed,
+    };
   }
 }

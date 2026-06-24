@@ -1,13 +1,12 @@
 /**
- * V3 Pipeline — Stage 4: Aggregator
+ * V3 Pipeline — Stage 3: Aggregator
  *
- * Deterministic stage that collects all findings from Stages 1-3,
+ * Deterministic stage that collects all findings from Stages 1-2,
  * groups them by source, and produces a structured intermediate
  * object for downstream processing.
  *
  * This stage does NOT add new findings — it reorganizes and
- * tags the existing ones. The accumulatedFindings in the context
- * are REPLACED with the aggregated set.
+ * tags the existing ones.
  */
 
 import type { ReviewStage, ReviewContext, StageResult } from "./types.js";
@@ -18,8 +17,7 @@ const STAGE_NAME = "Aggregator";
 
 export interface AggregatedFindings {
   generalReview: Finding[];
-  standardsReviews: Record<string, Finding[]>;
-  userPromptReview: Finding[];
+  userInstructionsReview: Finding[];
   all: Finding[];
 }
 
@@ -35,42 +33,31 @@ export class AggregatorStage implements ReviewStage {
 
     // Group by source
     const generalReview: Finding[] = [];
-    const standardsReviews: Record<string, Finding[]> = {};
-    const userPromptReview: Finding[] = [];
+    const userInstructionsReview: Finding[] = [];
 
     for (const finding of accumulatedFindings) {
       for (const src of finding.source) {
         if (src === "General Review") {
           generalReview.push(finding);
-        } else if (src.startsWith("Standard: ")) {
-          const standardName = src.replace("Standard: ", "");
-          if (!standardsReviews[standardName]) {
-            standardsReviews[standardName] = [];
-          }
-          standardsReviews[standardName].push(finding);
         } else if (src === "User Instructions") {
-          userPromptReview.push(finding);
+          userInstructionsReview.push(finding);
         }
       }
     }
 
     const aggregated: AggregatedFindings = {
       generalReview,
-      standardsReviews,
-      userPromptReview,
+      userInstructionsReview,
       all: accumulatedFindings,
     };
 
     logger.info("STAGE", `[${STAGE_NAME}] Aggregation complete`, {
       prId: prContext.prId,
       generalCount: generalReview.length,
-      standardsCount: Object.values(standardsReviews).reduce((sum, arr) => sum + arr.length, 0),
-      userPromptCount: userPromptReview.length,
+      userInstructionsCount: userInstructionsReview.length,
       totalCount: accumulatedFindings.length,
     });
 
-    // Don't add new findings — just store the aggregated structure as metadata
-    // The accumulatedFindings stays unchanged for the next stage
     return {
       stageName: STAGE_NAME,
       findings: [], // No NEW findings from this stage

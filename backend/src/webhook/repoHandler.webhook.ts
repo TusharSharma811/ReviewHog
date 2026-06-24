@@ -64,17 +64,26 @@ export const repoHandlerWebhook = async (
 
           const defaultRepoReviewOn = await getDefaultRepoReviewOn(ownerId);
 
-          await prisma.repo.createMany({
-            data: validPayload.repositories_added.map((repo) => ({
-              id: repo.id.toString(),
-              name: repo.full_name,
-              description: repo.description ?? "",
-              url: validPayload.installation.account.html_url + `/${repo.name}`,
-              ownerId,
-              isReviewOn: defaultRepoReviewOn,
-            })),
-            skipDuplicates: true,
-          });
+          await Promise.all(validPayload.repositories_added.map((repo) => {
+            const url = validPayload.installation.account.html_url + `/${repo.name}`;
+            return prisma.repo.upsert({
+              where: { ownerId_url: { ownerId, url } },
+              update: {
+                githubRepoId: repo.id.toString(),
+                name: repo.full_name,
+                description: repo.description ?? "",
+                isReviewOn: defaultRepoReviewOn,
+              },
+              create: {
+                githubRepoId: repo.id.toString(),
+                name: repo.full_name,
+                description: repo.description ?? "",
+                url,
+                ownerId,
+                isReviewOn: defaultRepoReviewOn,
+              },
+            });
+          }));
 
           logger.info("WEBHOOK", "Repos added via installation_repositories", {
             ownerId,
@@ -89,7 +98,8 @@ export const repoHandlerWebhook = async (
           // With onDelete: Cascade, deleting repos will also delete their reviews
           await prisma.repo.deleteMany({
             where: {
-              id: { in: validPayload.repositories_removed.map((r) => r.id.toString()) },
+              ownerId: validPayload.installation.account.id.toString(),
+              githubRepoId: { in: validPayload.repositories_removed.map((r) => r.id.toString()) },
             },
           });
         }

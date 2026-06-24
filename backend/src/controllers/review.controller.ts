@@ -129,90 +129,8 @@ export const compareReviews = async (req: Request, res: Response) => {
   }
 };
 
-// ─── Custom Rules CRUD ──────────────────────────────────────────────────────
 
-const customRuleSchema = z.object({
-  name: z.string().min(1).max(100),
-  pattern: z.string().min(1).max(500),
-  description: z.string().max(500).optional(),
-  severity: z.enum(["critical", "high", "medium", "low"]).default("medium"),
-  category: z.enum(["custom", "security", "performance", "style"]).default("custom"),
-  isEnabled: z.boolean().default(true),
-});
 
-export const getCustomRules = async (req: Request, res: Response) => {
-  const userId = (req as RequestWithUser).user?.id;
-  if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-  try {
-    const rules = await prisma.customRule.findMany({
-      where: { ownerId: userId },
-      orderBy: { createdAt: "desc" },
-    });
-    res.status(200).json(rules);
-  } catch (error) {
-    logger.error("RULES", "Error fetching custom rules", { error: error instanceof Error ? error.message : String(error) });
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-export const createCustomRule = async (req: Request, res: Response) => {
-  const userId = (req as RequestWithUser).user?.id;
-  if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-  const parsed = customRuleSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0].message });
-
-  try {
-    const count = await prisma.customRule.count({ where: { ownerId: userId } });
-    if (count >= 25) return res.status(400).json({ message: "Maximum 25 custom rules allowed" });
-
-    const rule = await prisma.customRule.create({
-      data: { ...parsed.data, ownerId: userId },
-    });
-    res.status(201).json(rule);
-  } catch (error) {
-    logger.error("RULES", "Error creating custom rule", { error: error instanceof Error ? error.message : String(error) });
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-export const updateCustomRule = async (req: Request, res: Response) => {
-  const userId = (req as RequestWithUser).user?.id;
-  if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-  const { ruleId } = req.params;
-  const parsed = customRuleSchema.partial().safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0].message });
-
-  try {
-    const existing = await prisma.customRule.findFirst({ where: { id: ruleId, ownerId: userId } });
-    if (!existing) return res.status(404).json({ message: "Rule not found" });
-
-    const rule = await prisma.customRule.update({ where: { id: ruleId }, data: parsed.data });
-    res.status(200).json(rule);
-  } catch (error) {
-    logger.error("RULES", "Error updating custom rule", { error: error instanceof Error ? error.message : String(error) });
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-export const deleteCustomRule = async (req: Request, res: Response) => {
-  const userId = (req as RequestWithUser).user?.id;
-  if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-  const { ruleId } = req.params;
-  try {
-    const existing = await prisma.customRule.findFirst({ where: { id: ruleId, ownerId: userId } });
-    if (!existing) return res.status(404).json({ message: "Rule not found" });
-
-    await prisma.customRule.delete({ where: { id: ruleId } });
-    res.status(200).json({ message: "Rule deleted" });
-  } catch (error) {
-    logger.error("RULES", "Error deleting custom rule", { error: error instanceof Error ? error.message : String(error) });
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
 
 // ─── Code Quality Badge ─────────────────────────────────────────────────────
 
@@ -301,6 +219,18 @@ export const createGitHubIssue = async (req: Request, res: Response) => {
     }
 
     const { title, body, repoFullName } = parsed.data;
+    const repo = await prisma.repo.findFirst({
+      where: {
+        ownerId: userId,
+        name: repoFullName,
+      },
+      select: { id: true },
+    });
+
+    if (!repo) {
+      return res.status(403).json({ message: "Repository is not connected to your account." });
+    }
+
     const response = await axios.post(
       `https://api.github.com/repos/${repoFullName}/issues`,
       { title, body, labels: ["reviewhog", "ai-review"] },

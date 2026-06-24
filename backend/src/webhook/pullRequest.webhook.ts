@@ -5,6 +5,7 @@ import { getGithubToken } from "../utils/getGithubToken.js";
 import { runReviewPipeline } from "../pipeline/index.js";
 import type { PRContext, PRFile } from "../pipeline/types.js";
 import { logger } from "../utils/logger.js";
+import { makePullRequestReviewId } from "../utils/reviewIds.js";
 import { z } from "zod";
 
 // Files that should never be reviewed because they produce noisy feedback.
@@ -47,10 +48,6 @@ function shouldSkipFile(filename: string, patchSize: number): boolean {
   if (patchSize > MAX_PATCH_SIZE) return true;
 
   return false;
-}
-
-function makePullRequestReviewId(prId: string): string {
-  return `${prId}-summary`;
 }
 
 function truncateGithubComment(body: string): string {
@@ -111,7 +108,8 @@ async function computeAvgRating(ownerId: string): Promise<number | null> {
 async function buildReviewFileContext(
   file: PullRequestFile,
   headers: Record<string, string>,
-  prId: string
+  prId: string,
+  headSha: string
 ): Promise<PRFile> {
   logger.info("WEBHOOK", "Fetching review context", {
     prId,
@@ -121,7 +119,11 @@ async function buildReviewFileContext(
 
   let fileContent: string;
   try {
-    const contentRes = await axios.get<string>(file.contents_url, {
+    // Append ?ref=<headSha> to fetch the file from the PR head, not the default branch
+    const separator = file.contents_url.includes("?") ? "&" : "?";
+    const refUrl = `${file.contents_url}${separator}ref=${headSha}`;
+
+    const contentRes = await axios.get<string>(refUrl, {
       headers: { ...headers, Accept: "application/vnd.github.v3.raw" },
     });
     fileContent = contentRes.data;
@@ -152,18 +154,26 @@ async function buildReviewFileContext(
  * Process the PR review in the background (after webhook has responded 200).
  * V3 pipeline only — no V1/V2 fallback.
  */
-async function processPullRequest(payload: PullRequestPayload, ownerId: string): Promise<void> {
+async function processPullRequest(
+  payload: PullRequestPayload,
+  ownerId: string,
+  dbRepoId: string
+): Promise<void> {
   const prId = payload.pull_request.id;
   const repoFullName = `${payload.repository.owner.login}/${payload.repository.name}`;
+  const headSha = payload.pull_request.head.sha;
+  let checkRunId: number | null = null;
+  let headers: Record<string, string> | null = null;
 
   logger.info("WEBHOOK", "Processing PR review (v3 pipeline)", { prId, repo: repoFullName });
 
   try {
     const token = await getGithubToken(payload.installation.id);
-    const headers = {
+    const requestHeaders: Record<string, string> = {
       Authorization: `Bearer ${token}`,
       Accept: "application/vnd.github+json",
     };
+    headers = requestHeaders;
 
     logger.info("WEBHOOK", "GitHub token acquired", { prId, installationId: payload.installation.id });
 
@@ -171,18 +181,18 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
       `https://api.github.com/repos/${repoFullName}/check-runs`,
       {
         name: "AI Code Review",
-        head_sha: payload.pull_request.head.sha,
+        head_sha: headSha,
         status: "in_progress",
       },
-      { headers }
+      { headers: requestHeaders }
     );
-    const checkRunId = createResp.data.id;
+    checkRunId = createResp.data.id;
 
     logger.info("WEBHOOK", "Check run created", { prId, checkRunId });
 
     const prFilesRes = await axios.get<PullRequestFile[]>(
       `${payload.pull_request.url}/files`,
-      { headers: { ...headers, Accept: "application/vnd.github.v3+json" } }
+      { headers: { ...requestHeaders, Accept: "application/vnd.github.v3+json" } }
     );
 
     const allFiles = prFilesRes.data;
@@ -207,7 +217,7 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
         `https://api.github.com/repos/${repoFullName}/check-runs/${checkRunId}`,
         {
           name: "AI Code Review",
-          head_sha: payload.pull_request.head.sha,
+            head_sha: headSha,
           status: "completed",
           conclusion: "success",
           output: {
@@ -215,14 +225,14 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
             summary: `All ${allFiles.length} changed file(s) were skipped (lock files, images, configs, etc.)`,
           },
         },
-        { headers }
+        { headers: requestHeaders }
       );
       logger.info("WEBHOOK", "No reviewable files, check run completed", { prId });
       return;
     }
 
     const reviewFiles = await Promise.all(
-      reviewableFiles.map((file) => buildReviewFileContext(file, headers, prId))
+      reviewableFiles.map((file) => buildReviewFileContext(file, requestHeaders, prId, headSha))
     );
 
     // ── V3 Pipeline ──
@@ -232,16 +242,17 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
       prTitle: payload.pull_request.title || "",
       prBody: payload.pull_request.body || "",
       baseBranch: payload.pull_request.base?.ref || "",
-      headSha: payload.pull_request.head.sha,
+      headSha,
       ownerId,
       installationId: payload.installation.id,
       commentsUrl: payload.pull_request.comments_url,
       prUrl: payload.pull_request.url,
+      githubRepoId: payload.repository.id.toString(),
     };
 
     let pipelineResult: import("../pipeline/types.js").PipelineResult;
     try {
-      pipelineResult = await runReviewPipeline(prContext, reviewFiles);
+      pipelineResult = await runReviewPipeline(prContext, reviewFiles, skippedFiles.length);
 
       logger.info("WEBHOOK", "V3 pipeline review complete", {
         prId,
@@ -250,7 +261,6 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
         riskScore: pipelineResult.riskScore,
         findingsCount: pipelineResult.findings.length,
         stagesRun: pipelineResult.stats.stagesRun,
-        standardsTriggered: pipelineResult.stats.standardsTriggered,
         processingTimeMs: pipelineResult.stats.processingTimeMs,
       });
     } catch (pipelineErr) {
@@ -274,7 +284,6 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
           totalTokensUsed: 0,
           processingTimeMs: 0,
           stagesRun: [],
-          standardsTriggered: [],
         },
       };
     }
@@ -292,8 +301,8 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
     // Persist review with V3 pipeline metadata
     await prisma.review.create({
       data: {
-        reviewId: makePullRequestReviewId(payload.pull_request.id.toString()),
-        repoId: payload.repository.id.toString(),
+        reviewId: makePullRequestReviewId(payload.pull_request.id.toString(), headSha),
+        repoId: dbRepoId,
         ownerId,
         comment: commentBody,
         rating: pipelineResult.rating,
@@ -308,7 +317,6 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
         reviewersUsed: pipelineResult.stats.reviewersRun,
         findingsJson: JSON.parse(JSON.stringify(pipelineResult.findings)),
         stagesRun: pipelineResult.stats.stagesRun,
-        standardsTriggered: pipelineResult.stats.standardsTriggered,
       },
     });
 
@@ -331,7 +339,7 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
       `https://api.github.com/repos/${repoFullName}/check-runs/${checkRunId}`,
       {
         name: "AI Code Review",
-        head_sha: payload.pull_request.head.sha,
+        head_sha: headSha,
         status: "completed",
         conclusion: pipelineResult.conclusion,
         output: {
@@ -381,6 +389,31 @@ async function processPullRequest(payload: PullRequestPayload, ownerId: string):
       error: errMsg,
       stack: err instanceof Error ? err.stack : undefined,
     });
+
+    if (checkRunId && headers) {
+      try {
+        await axios.patch(
+          `https://api.github.com/repos/${repoFullName}/check-runs/${checkRunId}`,
+          {
+            name: "AI Code Review",
+            head_sha: headSha,
+            status: "completed",
+            conclusion: "failure",
+            output: {
+              title: "AI code review failed",
+              summary: "ReviewHog could not complete this review. Please review the changes manually and retry later.",
+            },
+          },
+          { headers }
+        );
+      } catch (updateErr) {
+        logger.error("WEBHOOK", "Failed to mark check run as failed", {
+          prId,
+          checkRunId,
+          error: updateErr instanceof Error ? updateErr.message : String(updateErr),
+        });
+      }
+    }
   }
 }
 
@@ -401,8 +434,14 @@ export const pullRequestWebhook = async (
 
     const validPayload = parsed.data;
 
-    const repoInfo = await prisma.repo.findUnique({
-      where: { id: validPayload.repository.id.toString() },
+    const ownerId = validPayload.repository.owner.id.toString();
+    const githubRepoId = validPayload.repository.id.toString();
+
+    const repoInfo = await prisma.repo.findFirst({
+      where: {
+        ownerId,
+        githubRepoId,
+      },
       include: {
         owner: {
           select: { aiReviewsEnabled: true },
@@ -428,8 +467,11 @@ export const pullRequestWebhook = async (
     // Deduplication: check if this PR was already reviewed
     const existingReview = await prisma.review.findFirst({
       where: {
-        reviewId: { startsWith: validPayload.pull_request.id.toString() },
-        repoId: validPayload.repository.id.toString(),
+        reviewId: makePullRequestReviewId(
+          validPayload.pull_request.id.toString(),
+          validPayload.pull_request.head.sha
+        ),
+        repoId: repoInfo.id,
       },
     });
 
@@ -450,7 +492,7 @@ export const pullRequestWebhook = async (
     });
 
     setImmediate(() => {
-      processPullRequest(validPayload, repoInfo.ownerId).catch((err) => {
+      processPullRequest(validPayload, repoInfo.ownerId, repoInfo.id).catch((err) => {
         logger.error("WEBHOOK", "Background PR processing crashed", {
           prId: validPayload.pull_request.id,
           error: err instanceof Error ? err.message : String(err),

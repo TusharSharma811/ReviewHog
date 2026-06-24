@@ -187,21 +187,12 @@ export class ReportGeneratorStage implements ReviewStage {
       }
     }
 
-    // ── Standards Triggered ──
-    const standardsTriggered =
-      (context.stageMetadata["Standards Review"] as { standardsTriggered?: string[] })
-        ?.standardsTriggered ?? [];
+    // ── User Instructions Note ──
+    const hasUserInstructions = Boolean(context.reviewInstructions?.trim());
 
-    const hasUserPrompt = Boolean(context.reviewInstructions?.trim());
-
-    if (standardsTriggered.length > 0 || hasUserPrompt) {
-      sections.push(`### 📋 Standards Triggered\n`);
-      for (const std of standardsTriggered) {
-        sections.push(`✓ ${std}`);
-      }
-      if (hasUserPrompt) {
-        sections.push(`✓ User Custom Instructions`);
-      }
+    if (hasUserInstructions) {
+      sections.push(`### 📋 Custom Review\n`);
+      sections.push(`✓ User Instructions applied`);
       sections.push("");
     }
 
@@ -211,7 +202,7 @@ export class ReportGeneratorStage implements ReviewStage {
       `📊 ${accumulatedFindings.length} finding(s) | Pipeline v3`
     );
     sections.push(
-      `🤖 Stages: General Review${standardsTriggered.length > 0 ? ` → Standards (${standardsTriggered.join(", ")})` : ""}${hasUserPrompt ? " → User Instructions" : ""} → Dedup → Report`
+      `🤖 Stages: General Review${hasUserInstructions ? " → User Instructions" : ""} → Dedup → Report`
     );
 
     let report = sections.join("\n");

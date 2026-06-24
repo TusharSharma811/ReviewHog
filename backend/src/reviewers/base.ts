@@ -37,6 +37,7 @@ interface ResolvedSettings {
   apiKey: string | null;
   model: string;
   apiBaseUrl: string; // Provider-specific API endpoint
+  temperature: number; // LLM temperature (0.0-1.0)
 }
 
 // ─── Provider API URLs ──────────────────────────────────────────────────────
@@ -49,44 +50,11 @@ const PROVIDER_URLS: Record<string, string> = {
   default: "https://openrouter.ai/api/v1/chat/completions",
 };
 
-// ─── Model Routing ──────────────────────────────────────────────────────────
 
-/**
- * Routes to different models based on risk tier and reviewer type.
- * All tiers default to FREE models. Override via env vars if you have a paid key.
- * User's saved model OR system default always take priority over tiered routing.
- */
-const MODEL_TIERS = {
-  premium: process.env.AI_MODEL_PREMIUM || "deepseek/deepseek-v4-flash:free",
-  standard: process.env.AI_MODEL_STANDARD || "deepseek/deepseek-v4-flash:free",
-  economy: process.env.AI_MODEL_ECONOMY || "deepseek/deepseek-v4-flash:free",
-};
-
-function selectModelForChunk(
-  riskTier: import("../pipeline/types.js").RiskTier,
-  reviewerType: import("../pipeline/types.js").ReviewerType
-): string {
-  // Security reviewer gets the most capable free model
-  if (reviewerType === "security") return MODEL_TIERS.premium;
-
-  // Route by risk
-  switch (riskTier) {
-    case "critical":
-      return MODEL_TIERS.premium;
-    case "high":
-    case "medium":
-      return MODEL_TIERS.standard;
-    case "low":
-      return MODEL_TIERS.economy;
-    default:
-      return MODEL_TIERS.standard;
-  }
-}
 
 async function resolveSettings(
   ownerId: string,
-  riskTier?: import("../pipeline/types.js").RiskTier,
-  reviewerType?: import("../pipeline/types.js").ReviewerType
+  repoTemperature?: number
 ): Promise<ResolvedSettings> {
   const user = await prisma.user.findUnique({
     where: { id: ownerId },
@@ -118,6 +86,7 @@ async function resolveSettings(
     apiKey: apiKey || getDefaultOpenRouterApiKey(),
     model,
     apiBaseUrl,
+    temperature: repoTemperature ?? 0.1,
   };
 }
 
@@ -152,6 +121,15 @@ interface OpenRouterResponse {
   usage?: { total_tokens?: number };
 }
 
+interface JsonSchemaResponseFormat {
+  type: "json_schema";
+  json_schema: {
+    name: string;
+    strict: boolean;
+    schema: unknown;
+  };
+}
+
 function normalizeContent(content: unknown): string {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
@@ -169,24 +147,65 @@ function normalizeContent(content: unknown): string {
 async function callLLMProvider(
   systemPrompt: string,
   userPrompt: string,
-  settings: ResolvedSettings
+  settings: ResolvedSettings,
+  responseFormat: JsonSchemaResponseFormat = REVIEWER_RESPONSE_FORMAT
 ): Promise<{ content: string; tokensUsed: number }> {
   if (!settings.apiKey) {
     throw new Error("No API key configured");
   }
 
+  let lastError: unknown;
+  let totalTokensUsed = 0;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const result = await callLLMProviderOnce(systemPrompt, userPrompt, settings, responseFormat);
+      totalTokensUsed += result.tokensUsed;
+      return { content: result.content, tokensUsed: totalTokensUsed };
+    } catch (err) {
+      lastError = err;
+      totalTokensUsed += 0;
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const is429 = errMsg.includes("429") || errMsg.toLowerCase().includes("rate");
+
+      logger.warn("LLM", `Attempt ${attempt + 1}/${MAX_RETRIES} failed`, {
+        error: errMsg,
+        rateLimited: is429,
+      });
+
+      if (attempt < MAX_RETRIES - 1) {
+        const delay = is429
+          ? RATE_LIMIT_DELAY_MS * (attempt + 1)
+          : BASE_DELAY_MS * Math.pow(2, attempt);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+  }
+
+  throw lastError ?? new Error("All LLM retries exhausted");
+}
+
+/** Single LLM call without retries */
+async function callLLMProviderOnce(
+  systemPrompt: string,
+  userPrompt: string,
+  settings: ResolvedSettings,
+  responseFormat: JsonSchemaResponseFormat
+): Promise<{ content: string; tokensUsed: number }> {
   const isAnthropic = settings.apiBaseUrl.includes("anthropic.com");
+  const schemaContract =
+    "Return ONLY valid JSON matching this JSON schema. Do not wrap it in markdown.\n" +
+    JSON.stringify(responseFormat.json_schema.schema);
 
   if (isAnthropic) {
-    // Anthropic Messages API — different request/response format
     const response = await axios.post(
       settings.apiBaseUrl,
       {
         model: settings.model,
-        system: systemPrompt,
+        system: `${systemPrompt}\n\n${schemaContract}`,
         messages: [{ role: "user", content: userPrompt }],
         max_tokens: MAX_OUTPUT_TOKENS,
-        temperature: 0.1,
+        temperature: settings.temperature,
       },
       {
         timeout: REQUEST_TIMEOUT_MS,
@@ -223,10 +242,9 @@ async function callLLMProvider(
     "Content-Type": "application/json",
   };
 
-  // OpenRouter-specific headers
   if (settings.apiBaseUrl.includes("openrouter.ai")) {
     headers["HTTP-Referer"] = process.env.FRONTEND_URL || "https://review-hog.vercel.app";
-    headers["X-OpenRouter-Title"] = "ReviewHog-v2";
+    headers["X-OpenRouter-Title"] = "ReviewHog-v3";
   }
 
   const response = await axios.post<OpenRouterResponse>(
@@ -237,8 +255,8 @@ async function callLLMProvider(
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      response_format: REVIEWER_RESPONSE_FORMAT,
-      temperature: 0.1,
+      response_format: responseFormat,
+      temperature: settings.temperature,
       max_tokens: MAX_OUTPUT_TOKENS,
     },
     { timeout: REQUEST_TIMEOUT_MS, headers }
@@ -292,105 +310,3 @@ function parseReviewerOutput(raw: string, reviewerType: ReviewerType): ReviewerO
 
 export { resolveSettings, callLLMProvider, parseReviewerOutput, extractJSON, normalizeContent, formatChunkForPrompt };
 export type { ResolvedSettings };
-
-// ─── Public: Run a Reviewer ─────────────────────────────────────────────────
-
-export interface RunReviewerOptions {
-  reviewerType: ReviewerType;
-  systemPrompt: string;
-  chunk: ReviewChunk;
-  ctx: PRContext;
-  /** P1: Pre-resolved settings to avoid N+1 DB queries */
-  preResolvedSettings?: ResolvedSettings;
-}
-
-export interface ReviewerResult {
-  findings: Finding[];
-  tokensUsed: number;
-  failed?: boolean; // true if ALL retries exhausted (rate-limited, timeout, etc.)
-}
-
-export async function runReviewer(
-  options: RunReviewerOptions
-): Promise<ReviewerResult> {
-  const { reviewerType, systemPrompt, chunk, ctx, preResolvedSettings } = options;
-
-  // P1: Use pre-resolved settings if available, otherwise resolve per-call (backward compat)
-  const settings = preResolvedSettings
-    ? {
-        ...preResolvedSettings,
-        model: preResolvedSettings.model || selectModelForChunk(chunk.maxRiskTier, reviewerType),
-      }
-    : await resolveSettings(ctx.ownerId, chunk.maxRiskTier, reviewerType);
-
-  const userPrompt = formatChunkForPrompt(chunk);
-
-  let lastError: unknown;
-  let totalTokensUsed = 0;
-
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      logger.debug("REVIEWER", `[${reviewerType}] Attempt ${attempt + 1}`, {
-        chunkId: chunk.id,
-        prId: ctx.prId,
-      });
-
-      const { content, tokensUsed } = await callLLMProvider(systemPrompt, userPrompt, settings);
-      totalTokensUsed += tokensUsed;
-
-      if (!content.trim()) {
-        throw new Error("Empty response from model");
-      }
-
-      const output = parseReviewerOutput(content, reviewerType);
-
-      // C5: Validate consistency between noIssues flag and findings array
-      if (output.noIssues && output.findings.length > 0) {
-        logger.warn("REVIEWER", `[${reviewerType}] Inconsistency: noIssues=true but ${output.findings.length} findings returned`, {
-          chunkId: chunk.id,
-          prId: ctx.prId,
-          findingsCount: output.findings.length,
-        });
-        // Trust the findings over the flag — the LLM contradicted itself
-      }
-
-      logger.info("REVIEWER", `[${reviewerType}] Complete`, {
-        chunkId: chunk.id,
-        prId: ctx.prId,
-        findingsCount: output.findings.length,
-        noIssues: output.noIssues,
-        tokensUsed,
-      });
-
-      return { findings: output.findings, tokensUsed: totalTokensUsed };
-    } catch (err) {
-      lastError = err;
-      const errMsg = err instanceof Error ? err.message : String(err);
-      const is429 = errMsg.includes("429") || errMsg.includes("rate");
-
-      logger.error("REVIEWER", `[${reviewerType}] Attempt ${attempt + 1} failed`, {
-        chunkId: chunk.id,
-        error: errMsg,
-        rateLimited: is429,
-      });
-
-      if (attempt < MAX_RETRIES - 1) {
-        // Wait longer on rate limits (429)
-        const delay = is429
-          ? RATE_LIMIT_DELAY_MS * (attempt + 1)
-          : BASE_DELAY_MS * Math.pow(2, attempt);
-        logger.debug("REVIEWER", `[${reviewerType}] Waiting ${delay}ms before retry`, { chunkId: chunk.id });
-        await new Promise((r) => setTimeout(r, delay));
-      }
-    }
-  }
-
-  logger.error("REVIEWER", `[${reviewerType}] All retries exhausted`, {
-    chunkId: chunk.id,
-    prId: ctx.prId,
-    lastError: lastError instanceof Error ? lastError.message : String(lastError),
-  });
-
-  // Return failed=true so pipeline knows this reviewer couldn't run
-  return { findings: [], tokensUsed: totalTokensUsed, failed: true };
-}
